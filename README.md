@@ -44,8 +44,37 @@ The Markdown files are the official versions; the PDFs are readable copies.
 
 ## Running locally
 
-Setup instructions will be added with the solution skeleton and Docker Compose configuration (milestone M1). Development uses Windows with WSL 2, Docker Desktop, the .NET 10 SDK, and VS Code ([ADR 0012](docs/adr/0012-wsl2-docker-development.md)).
+## Running locally
 
+Development uses Windows with WSL 2, Docker Desktop, the .NET 10 SDK, and VS Code ([ADR 0012](docs/adr/0012-wsl2-docker-development.md)).
+
+1. Create your local settings file and set your own password:
+
+```bash
+   cp .env.example .env
+```
+
+2. Start SQL Server and Presidio:
+
+```bash
+   docker compose up -d
+   docker compose ps   # wait until sqlserver shows (healthy)
+```
+
+3. Build and test:
+
+```bash
+   dotnet build
+   dotnet test
+```
+
+| Service | Address |
+|---|---|
+| SQL Server (Developer edition) | `localhost,1433`, user `sa`, password from `.env` |
+| Presidio analyzer | `http://localhost:5002` |
+| Presidio anonymizer | `http://localhost:5001` |
+
+Stop everything with `docker compose down`. Add `-v` to also delete the local database.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, standards, and AI-assisted development policy.
