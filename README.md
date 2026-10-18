@@ -1,4 +1,5 @@
 # Feedback Intelligence Platform
+[![CI](https://github.com/benjammin-dev/feedback-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/benjammin-dev/feedback-intelligence/actions/workflows/ci.yml)
 
 A system that reads public GitHub issues for popular open-source products every day, works out what users are struggling with, and publishes an always-current dashboard for product teams. It runs unattended, at no cost.
 
