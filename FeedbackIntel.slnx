@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FeedbackIntel.Core/FeedbackIntel.Core.csproj" />
+    <Project Path="src/FeedbackIntel.Infrastructure/FeedbackIntel.Infrastructure.csproj" />
+    <Project Path="src/FeedbackIntel.Pipeline/FeedbackIntel.Pipeline.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FeedbackIntel.Core.Tests/FeedbackIntel.Core.Tests.csproj" />
+    <Project Path="tests/FeedbackIntel.Evaluation/FeedbackIntel.Evaluation.csproj" />
+    <Project Path="tests/FeedbackIntel.Integration.Tests/FeedbackIntel.Integration.Tests.csproj" />
+  </Folder>
+</Solution>
