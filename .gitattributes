@@ -1,0 +1,13 @@
+# Normalize all text files to LF line endings (ADR 0012)
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files: never convert or diff
+*.png     binary
+*.jpg     binary
+*.pdf     binary
+*.parquet binary
+*.zip     binary

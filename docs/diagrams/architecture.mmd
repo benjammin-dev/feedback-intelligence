@@ -1,0 +1,53 @@
+---
+config:
+  flowchart:
+    curve: basis
+    nodeSpacing: 40
+    rankSpacing: 38
+---
+flowchart TB
+    CFG["Config, prompts, SQL migrations<br/><i>GitHub repository</i>"]
+    HIST[("History, redacted only<br/><i>Parquet files in repository</i>")]
+    API["GitHub REST API<br/><i>source of issues</i>"]
+
+    subgraph RUNNER["GitHub Actions runner: temporary, created and destroyed each run"]
+        ING["1. Issue ingestor<br/><i>C#</i>"]
+        RAW[("Raw layer<br/><i>SQL Server</i>")]
+        RED["2. PII redactor<br/><i>C#</i>"]
+        CLN[("Cleaned layer<br/><i>SQL Server</i>")]
+        ENR["3. AI enricher<br/><i>C#, cached, rate-limited</i>"]
+        RPT[("Reporting layer<br/><i>SQL Server</i>")]
+        INS["4. Insights builder<br/><i>T-SQL + C#</i>"]
+        QC{"5. Quality<br/>checks pass?"}
+        PUB["6. Publisher<br/><i>C#</i>"]
+        ALR["Alerter<br/><i>C#</i>"]
+        PRES[["Presidio container"]]
+    end
+
+    MODELS["GitHub Models<br/><i>AI service</i>"]
+    SITE["GitHub Pages<br/><i>static dashboard + published data</i>"]
+    BROWSER["Viewer's browser<br/><i>DuckDB-WASM queries the data</i>"]
+    ISSUES["GitHub Issues<br/><i>alert opened, nothing published</i>"]
+
+    CFG -. settings .-> ING
+    HIST -- restore --> CLN
+    API -- new and changed issues --> ING
+    ING --> RAW --> RED --> CLN --> ENR --> RPT --> INS --> QC
+    RED <--> PRES
+    ENR <--> MODELS
+    QC -- yes --> PUB
+    QC -- no --> ALR --> ISSUES
+    PUB -- deploy --> SITE --> BROWSER
+    PUB -- save --> HIST
+
+    classDef step fill:#eaf1fd,stroke:#2f6fdb,color:#12233f
+    classDef store fill:#fff7e6,stroke:#b7791f,color:#3d2a07
+    classDef ext fill:#f3f4f6,stroke:#6b7280,color:#111827
+    classDef out fill:#eaf7ef,stroke:#2f855a,color:#123d24
+    classDef bad fill:#fdecec,stroke:#c53030,color:#5c1111
+    class ING,RED,ENR,INS,PUB,PRES step
+    class RAW,CLN,RPT,HIST,CFG store
+    class API,MODELS ext
+    class SITE,BROWSER out
+    class ALR,ISSUES bad
+    style RUNNER fill:#fafbfc,stroke:#2f6fdb,stroke-dasharray:6 4,color:#12233f
