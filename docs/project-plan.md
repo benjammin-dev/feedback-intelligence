@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.1 |
-| **Date** | 2026-10-14 |
+| **Version** | 1.2 |
+| **Date** | 2026-10-19 |
 | **Owner** | Benjamin Rose |
 
 ---
@@ -80,7 +80,7 @@ Issue authors never use the system, but their writing is what it processes. Prot
 
 ### Technology
 
-- Application code in C# (.NET 8).
+- Application code in C# (.NET 10; see ADR 0014).
 - Data storage and transforms in SQL Server (Express in the pipeline, Developer locally).
 - Hosting, scheduling, CI/CD, and alerting on GitHub (Actions, Pages, Issues).
 - AI through GitHub Models only.
@@ -196,5 +196,6 @@ Personal information is redacted from M3 onward, before any issue text is publis
 
 | Version | Date | Change |
 |---|---|---|
+| 1.2 | 2026-10-19 | Updated the runtime constraint from .NET 8 to .NET 10, because .NET 8 support ends in November 2026 (ADR 0014). |
 | 1.1 | 2026-10-14 | Moved PII redaction from M4 to M3 so no issue text is published unredacted; renamed M3 and M4; added optional M8 for Could-have requirements. See [requirements](requirements.md). |
 | 1.0 | 2026-10-14 | Initial plan approved |
