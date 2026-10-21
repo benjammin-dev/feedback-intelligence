@@ -1,6 +1,6 @@
 # 0003: Use C# and .NET 8 for the pipeline application
 
-**Status:** Accepted
+**Status:** Superseded by [0014](0014-target-dotnet-10.md)
 **Date:** 2026-10-14
 
 ## Context
