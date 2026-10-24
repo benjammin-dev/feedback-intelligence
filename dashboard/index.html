@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Only files from this site may load or run (threat model: XSS). -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Feedback Intelligence</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>Feedback Intelligence</h1>
+    <p class="label">New GitHub issues in the last 7 days</p>
+    <p id="new-issues" class="number">…</p>
+    <p id="change" class="change"></p>
+    <p id="updated" class="muted"></p>
+    <p id="error" class="error" hidden></p>
+  </main>
+  <footer class="muted">
+    <a href="https://github.com/benjammin-dev/feedback-intelligence">Source on GitHub</a>
+  </footer>
+</body>
+</html>

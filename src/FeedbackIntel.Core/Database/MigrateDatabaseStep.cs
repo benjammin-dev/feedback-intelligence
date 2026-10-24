@@ -1,7 +1,6 @@
-using FeedbackIntel.Core.Database;
 using FeedbackIntel.Core.Orchestration;
 
-namespace FeedbackIntel.Core.Steps;
+namespace FeedbackIntel.Core.Database;
 
 /// <summary>Step 1: bring the database schema up to date before anything uses it.</summary>
 public sealed class MigrateDatabaseStep(IDatabaseMigrator migrator) : IPipelineStep

@@ -1,8 +1,7 @@
 using FeedbackIntel.Core.Database;
 using FeedbackIntel.Core.Orchestration;
-using FeedbackIntel.Core.Steps;
 
-namespace FeedbackIntel.Core.Tests;
+namespace FeedbackIntel.Core.Tests.Database;
 
 public class MigrateDatabaseStepTests
 {
