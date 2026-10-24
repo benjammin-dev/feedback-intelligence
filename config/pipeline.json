@@ -1,0 +1,18 @@
+{
+  "Repositories": [
+    { "Owner": "microsoft", "Name": "winget-cli", "Enabled": true },
+    { "Owner": "microsoft", "Name": "PowerToys", "Enabled": false },
+    { "Owner": "microsoft", "Name": "vscode", "Enabled": false }
+  ],
+  "Ingestion": {
+    "InitialHistoryDays": 90,
+    "MaxRejectedPercent": 10,
+    "RateLimitMaxWaitMinutes": 15
+  },
+  "Operations": {
+    "SqlStartupWaitSeconds": 120
+  },
+  "Publishing": {
+    "OutputDirectory": "out/site"
+  }
+}
