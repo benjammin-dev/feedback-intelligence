@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.1 |
-| **Date** | 2026-10-18 |
+| **Version** | 1.2 |
+| **Date** | 2026-10-24 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Requirements](requirements.md), [ADR 0009: data layers](adr/0009-raw-cleaned-reporting-layers.md), [ADR 0013: bodies excluded from history](adr/0013-exclude-bodies-from-history.md) |
 
@@ -214,9 +214,9 @@ The numbers on the Overview page (US-01): the past 7 days and the 7 days before,
 | `period_end` | `datetime2(0)` | End of the window. |
 | `new_issues` | `int` | Issues opened in the window. |
 | `closed_issues` | `int` | Issues closed in the window. |
-| `bug_count` | `int` | New issues classified as bugs. Stored as a count, not a percentage, so the dashboard calculates the percentage the same way everywhere. |
-| `critical_count` | `int` | New issues classified as critical. |
-| `median_days_to_close` | `decimal(7,1)` | Median days to close for issues closed in the window. The median isn't skewed by a few very old issues the way an average would be. |
+| `bug_count` | `int` | New issues classified as bugs. Stored as a count, not a percentage, so the dashboard calculates the percentage the same way everywhere. Empty until AI classification exists (M4). |
+| `critical_count` | `int` | New issues classified as critical. Empty until AI classification exists (M4). |
+| `median_days_to_close` | `decimal(7,1)` | Median days to close for issues closed in the window. The median isn't skewed by a few very old issues the way an average would be. Empty when no issues closed in the window. |
 
 **Why an `all` row is stored instead of calculated:** medians can't be combined. The median of three repositories' medians isn't the true median of all issues, so the combined figure is calculated from the underlying issues in SQL.
 
@@ -302,7 +302,7 @@ A single row of facts about the current data, published as a tiny file the dashb
 | `data_updated_at` | `datetime2(0)` | When the last successful run finished. Shown on every page (FR-DSH-05). |
 | `last_run_id` | `bigint` | The run that produced the data. |
 | `repositories` | `nvarchar(1000)` | The tracked repositories, as a JSON list. Fills the repository filter. |
-| `ai_model` | `varchar(100)` | The AI model in use. Shown alongside AI-generated labels for transparency (FR-DSH-06). |
+| `ai_model` | `varchar(100)` | The AI model in use. Shown alongside AI-generated labels for transparency (FR-DSH-06). This and the next three columns are empty until AI enrichment exists (M4). |
 | `prompt_version` | `varchar(20)` | The current prompt version. |
 | `ai_daily_limit` | `smallint` | The free daily AI request limit. With the latest usage, shows how close the system is to its limit (US-11). |
 | `ai_requests_today` | `smallint` | AI requests used in the latest run. |
@@ -364,6 +364,7 @@ The two small JSON files let the dashboard show the Overview page immediately wh
 
 | Version | Date | Change |
 |---|---|---|
+| 1.2 | 2026-10-24 | Noted which `reporting.overview` and `reporting.site_info` columns are empty until AI enrichment exists, and that the median is empty when nothing closed. |
 | 1.1 | 2026-10-18 | Added `ops.run.issues_rejected`; categories and severities now come from configuration (see design). |
 | 1.0 | 2026-10-14 | Added reporting layer, `cleaned.weekly_digest`, and data contract. Excluded bodies from history (ADR 0013). Corrected body cap to 4,000 characters (`nvarchar(8000)` is not a valid SQL Server type). |
 | 0.1 | 2026-10-14 | Draft: schemas, raw, cleaned, and operational layers |
