@@ -4,6 +4,7 @@ using Dapper;
 
 using FeedbackIntel.Core.Configuration;
 using FeedbackIntel.Core.Model;
+using FeedbackIntel.Core.Text;
 using FeedbackIntel.Infrastructure.Publishing;
 using FeedbackIntel.Infrastructure.Sql;
 using FeedbackIntel.Integration.Tests.Sql;
@@ -13,7 +14,7 @@ using Microsoft.Data.SqlClient;
 namespace FeedbackIntel.Integration.Tests.Reporting;
 
 /// <summary>
-/// Builds a small known set of issues, then checks the reporting procedure's numbers
+/// Builds a small known set of cleaned issues, then checks the reporting procedure's numbers
 /// and the published JSON files against values worked out by hand.
 /// </summary>
 public class ReportingAndPublishingTests
@@ -91,7 +92,7 @@ public class ReportingAndPublishingTests
         var winget = await store.EnsureRepositoryAsync("microsoft", "winget-cli", AsOf, CancellationToken.None);
         var powerToys = await store.EnsureRepositoryAsync("microsoft", "PowerToys", AsOf, CancellationToken.None);
 
-        await store.InsertRawIssuesAsync(
+        await new SqlCleanedIssueStore(settings).UpsertAsync(
         [
             Issue(winget.Id, 1, created: Day(20)),                  // new (current), still open
             Issue(winget.Id, 2, created: Day(18), closed: Day(20)), // new and closed (current), 2 days
@@ -100,6 +101,7 @@ public class ReportingAndPublishingTests
             Issue(winget.Id, 5, created: Day(1), closed: Day(19)),  // closed (current), 18 days
             Issue(powerToys.Id, 1, created: Day(21)),               // new (current), still open
         ],
+            runId: 42,
             CancellationToken.None);
 
         await new SqlReportingBuilder(settings).RebuildAsync(AsOf, 42, CancellationToken.None);
@@ -123,17 +125,20 @@ public class ReportingAndPublishingTests
     /// <summary>Noon UTC on the given day of October 2026.</summary>
     private static DateTime Day(int day) => new(2026, 10, day, 12, 0, 0, DateTimeKind.Utc);
 
-    private static RawIssue Issue(short repoId, int number, DateTime created, DateTime? closed = null) => new(
+    private static CleanedIssue Issue(short repoId, int number, DateTime created, DateTime? closed = null) => new(
         RepoId: repoId,
         IssueNumber: number,
-        Title: "Test issue",
-        Body: null,
+        TitleRedacted: "Test issue",
+        BodyRedacted: null,
+        BodyLength: 0,
+        BodyTruncated: false,
+        ContentHash: ContentHasher.Compute("Test issue", null),
+        RedactionCount: 0,
         State: closed is null ? "open" : "closed",
         StateReason: closed is null ? null : "completed",
-        Labels: [],
+        LabelsJson: "[]",
         CreatedAt: created,
         UpdatedAt: closed ?? created,
         ClosedAt: closed,
-        HtmlUrl: $"https://github.com/microsoft/test/issues/{number}",
-        FetchedAt: AsOf);
+        HtmlUrl: $"https://github.com/microsoft/test/issues/{number}");
 }

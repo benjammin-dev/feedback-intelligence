@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.Json;
 
 using Dapper;
 
@@ -69,6 +70,36 @@ public sealed class SqlIssueStore(DatabaseSettings settings) : IIssueStore
         await bulkCopy.WriteToServerAsync(table, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RawIssue>> ReadRawIssuesAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT repo_id AS RepoId, issue_number AS IssueNumber, title AS Title, body AS Body,
+                   state AS State, state_reason AS StateReason, labels AS Labels,
+                   created_at AS CreatedAt, updated_at AS UpdatedAt, closed_at AS ClosedAt,
+                   html_url AS HtmlUrl, fetched_at AS FetchedAt
+            FROM raw.issue
+            """;
+
+        await using var connection = new SqlConnection(settings.ConnectionString);
+        var rows = await connection.QueryAsync<RawIssueRow>(new CommandDefinition(sql, cancellationToken: cancellationToken));
+
+        return rows.Select(row => new RawIssue(
+                row.RepoId,
+                row.IssueNumber,
+                row.Title,
+                row.Body,
+                row.State,
+                row.StateReason,
+                JsonSerializer.Deserialize<List<string>>(row.Labels) ?? [],
+                DateTime.SpecifyKind(row.CreatedAt, DateTimeKind.Utc),
+                DateTime.SpecifyKind(row.UpdatedAt, DateTimeKind.Utc),
+                row.ClosedAt is { } closedAt ? DateTime.SpecifyKind(closedAt, DateTimeKind.Utc) : null,
+                row.HtmlUrl,
+                DateTime.SpecifyKind(row.FetchedAt, DateTimeKind.Utc)))
+            .ToList();
+    }
+
     private static DataTable ToDataTable(IEnumerable<RawIssue> issues)
     {
         var table = new DataTable();
@@ -103,5 +134,32 @@ public sealed class SqlIssueStore(DatabaseSettings settings) : IIssueStore
         }
 
         return table;
+    }
+
+    private sealed class RawIssueRow
+    {
+        public short RepoId { get; init; }
+
+        public int IssueNumber { get; init; }
+
+        public string Title { get; init; } = "";
+
+        public string? Body { get; init; }
+
+        public string State { get; init; } = "";
+
+        public string? StateReason { get; init; }
+
+        public string Labels { get; init; } = "[]";
+
+        public DateTime CreatedAt { get; init; }
+
+        public DateTime UpdatedAt { get; init; }
+
+        public DateTime? ClosedAt { get; init; }
+
+        public string HtmlUrl { get; init; } = "";
+
+        public DateTime FetchedAt { get; init; }
     }
 }
