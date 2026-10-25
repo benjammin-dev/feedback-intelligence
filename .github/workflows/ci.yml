@@ -54,5 +54,14 @@ jobs:
           reportgenerator \
             -reports:"TestResults/**/coverage.cobertura.xml" \
             -targetdir:coverage \
-            -reporttypes:MarkdownSummaryGithub
+            "-reporttypes:MarkdownSummaryGithub;JsonSummary"
           cat coverage/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+        
+      - name: Enforce coverage minimum (NFR-MNT-01)
+        run: |
+          coverage=$(jq '.summary.linecoverage' coverage/Summary.json)
+          echo "Line coverage: ${coverage}% (minimum 80%)"
+          awk -v c="$coverage" 'BEGIN { exit !(c >= 80) }' || {
+            echo "::error::Line coverage ${coverage}% is below the 80% minimum (NFR-MNT-01)."
+            exit 1
+          }

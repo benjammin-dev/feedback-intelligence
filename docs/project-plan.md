@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.2 |
-| **Date** | 2026-10-19 |
+| **Version** | 1.3 |
+| **Date** | 2026-10-24 |
 | **Owner** | Benjamin Rose |
 
 ---
@@ -103,17 +103,17 @@ Issue authors never use the system, but their writing is what it processes. Prot
 
 ## 5. Assumptions
 
-| # | Assumption | How we'll validate it | When |
-|---|---|---|---|
-| A1 | GitHub Models will remain free, with rate limits close to today's | Check GitHub's docs; monitor rate-limit responses in the pipeline | Before AI work; ongoing |
-| A2 | GitHub's Issues API stays publicly accessible, and its rate limits suit daily incremental fetches | Make test calls against winget-cli and measure calls used per run | Walking skeleton |
-| A3 | GitHub Actions and Pages stay free for public repositories | Check GitHub's docs and billing page | Before deployment |
-| A4 | SQL Server Express runs in a Docker container on GitHub's Linux runners within reasonable time | Run a test workflow that starts SQL Server and runs one query | Walking skeleton |
-| A5 | Presidio detects the common PII in issues (emails, IPs, tokens, usernames in file paths) well enough | Test against a hand-checked sample of real issues | Before redaction is enabled |
-| A6 | The AI model classifies issues accurately enough to be useful | Measure against a hand-labeled set of about 100 issues | Before AI results are published |
-| A7 | winget-cli's issue volume fits within the free AI limits, including the first backfill | Count issues over the planned history window; estimate requests needed | Before first AI run |
-| A8 | Analyzing public issues and showing summaries with links to the originals is permitted | Review GitHub's terms of service and acceptable use policies | Before the dashboard goes public |
-| A9 | A Windows PC running WSL 2 (Ubuntu) and Docker Desktop can run SQL Server and Presidio containers for local development, with VS Code connected to WSL | Install WSL, Docker Desktop, and VS Code; start both containers and connect from SSMS | Before development starts |
+| # | Assumption | How we'll validate it | When | Result |
+|---|---|---|---|---|
+| A1 | GitHub Models will remain free, with rate limits close to today's | Check GitHub's docs; monitor rate-limit responses in the pipeline | Before AI work; ongoing | — |
+| A2 | GitHub's Issues API stays publicly accessible, and its rate limits suit daily incremental fetches | Make test calls against winget-cli and measure calls used per run | Walking skeleton | Confirmed in M2: a 90-day fetch for winget-cli finished in under 4 seconds, far inside the limits |
+| A3 | GitHub Actions and Pages stay free for public repositories | Check GitHub's docs and billing page | Before deployment | Confirmed in M2: October's usage was fully covered by included usage, so the net cost was $0 |
+| A4 | SQL Server Express runs in a Docker container on GitHub's Linux runners within reasonable time | Run a test workflow that starts SQL Server and runs one query | Walking skeleton | Confirmed in M2: SQL Server was ready before the pipeline started (migration took 0.7 s); the whole run took 49 s |
+| A5 | Presidio detects the common PII in issues (emails, IPs, tokens, usernames in file paths) well enough | Test against a hand-checked sample of real issues | Before redaction is enabled | — |
+| A6 | The AI model classifies issues accurately enough to be useful | Measure against a hand-labeled set of about 100 issues | Before AI results are published | — |
+| A7 | winget-cli's issue volume fits within the free AI limits, including the first backfill | Count issues over the planned history window; estimate requests needed | Before first AI run | — |
+| A8 | Analyzing public issues and showing summaries with links to the originals is permitted | Review GitHub's terms of service and acceptable use policies | Before issue titles or summaries are published (M3) | — |
+| A9 | A Windows PC running WSL 2 (Ubuntu) and Docker Desktop can run SQL Server and Presidio containers for local development, with VS Code connected to WSL | Install WSL, Docker Desktop, and VS Code; start both containers and connect from SSMS | Before development starts | Confirmed in M1 |
 
 ---
 
@@ -140,19 +140,19 @@ Likelihood and impact are rated Low, Medium, or High.
 
 ## 7. Milestones and timeline
 
-Estimates assume about 5 hours per week, with code drafted by an AI assistant and reviewed by the project owner. Each milestone ends with the project in a presentable state. Estimates are revisited at every milestone, and actual time is recorded against them.
+Estimates assume about 5 hours per week, with code drafted by an AI assistant and reviewed by the project owner. Each milestone ends with the project in a presentable state. Estimates are revisited at every milestone, and actual time is recorded against them in the **Actual** column.
 
-| Milestone | What's delivered | Est. weeks | Presentable as |
-|---|---|---|---|
-| **M0: Plan and design** | Project plan, requirements, design docs, ADRs | 1 | A well-documented project plan |
-| **M1: Foundation** | Dev environment (WSL, Docker), repository, standards, PR template, CI that builds and runs tests | 1 | A professionally set-up repository |
-| **M2: Walking skeleton** | winget-cli issues → SQL Server in Actions → one number on GitHub Pages, all automated | 1 | A working end-to-end pipeline, however small |
-| **M3: Core data pipeline and privacy** | Incremental ingest, Presidio redaction and PII tests, raw → cleaned → reporting T-SQL, quality checks, alert issues, basic dashboard (overview, trends, issue explorer) | 2 | A complete, privacy-safe data engineering project |
-| **M4: AI enrichment** | AI classification and summaries, caching, evaluation set with CI gate | 1–2 | An AI-integrated system with responsible-AI practices |
-| **M5: Insights** | Emerging topics, weekly digest, pipeline health page | 1 | The full product vision for one repository |
-| **M6: Scale out** | Onboard PowerToys, then VS Code with batching | 1 | A system that scales across products |
-| **M7: Operate and polish** | Runbook, simulated incident and postmortem, Bicep templates, final README, walkthrough video | 1 | Portfolio-ready |
-| **M8: Could-haves** *(optional)* | CSV export, Power BI Desktop report, local Spark partitioning prototype | Not estimated | Extended into Power Platform and Spark |
+| Milestone | What's delivered | Est. weeks | Actual | Presentable as |
+|---|---|---|---|---|
+| **M0: Plan and design** | Project plan, requirements, design docs, ADRs | 1 | 6 days (Oct 13–18) | A well-documented project plan |
+| **M1: Foundation** | Dev environment (WSL, Docker), repository, standards, PR template, CI that builds and runs tests | 1 | 3 days (Oct 18–20) | A professionally set-up repository |
+| **M2: Walking skeleton** | winget-cli issues → SQL Server in Actions → one number on GitHub Pages, all automated | 1 | 5 days (Oct 20–24) | A working end-to-end pipeline, however small |
+| **M3: Core data pipeline and privacy** | Incremental ingest, Presidio redaction and PII tests, raw → cleaned → reporting T-SQL, quality checks, alert issues, basic dashboard (overview, trends, issue explorer) | 2 | — | A complete, privacy-safe data engineering project |
+| **M4: AI enrichment** | AI classification and summaries, caching, evaluation set with CI gate | 1–2 | — | An AI-integrated system with responsible-AI practices |
+| **M5: Insights** | Emerging topics, weekly digest, pipeline health page | 1 | — | The full product vision for one repository |
+| **M6: Scale out** | Onboard PowerToys, then VS Code with batching | 1 | — | A system that scales across products |
+| **M7: Operate and polish** | Runbook, simulated incident and postmortem, Bicep templates, final README, walkthrough video | 1 | — | Portfolio-ready |
+| **M8: Could-haves** *(optional)* | CSV export, Power BI Desktop report, local Spark partitioning prototype | Not estimated | — | Extended into Power Platform and Spark |
 
 **Total for M0–M7: roughly 9–10 weeks.** Building finishes sooner; the remaining time covers review and lets the pipeline accumulate real operating history. M8 starts only after M0–M7 are complete.
 
@@ -196,6 +196,7 @@ Personal information is redacted from M3 onward, before any issue text is publis
 
 | Version | Date | Change |
 |---|---|---|
+| 1.3 | 2026-10-24 | Recorded actual time for M0–M2 and results for validated assumptions (A2, A3, A4, A9). A8 now applies before issue titles are published, since the M2 dashboard shows only counts. |
 | 1.2 | 2026-10-19 | Updated the runtime constraint from .NET 8 to .NET 10, because .NET 8 support ends in November 2026 (ADR 0014). |
 | 1.1 | 2026-10-14 | Moved PII redaction from M4 to M3 so no issue text is published unredacted; renamed M3 and M4; added optional M8 for Could-have requirements. See [requirements](requirements.md). |
 | 1.0 | 2026-10-14 | Initial plan approved |

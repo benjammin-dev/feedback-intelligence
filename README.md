@@ -1,9 +1,13 @@
 # Feedback Intelligence Platform
+
 [![CI](https://github.com/benjammin-dev/feedback-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/benjammin-dev/feedback-intelligence/actions/workflows/ci.yml)
+[![Pipeline](https://github.com/benjammin-dev/feedback-intelligence/actions/workflows/pipeline.yml/badge.svg)](https://github.com/benjammin-dev/feedback-intelligence/actions/workflows/pipeline.yml)
 
 A system that reads public GitHub issues for popular open-source products every day, works out what users are struggling with, and publishes an always-current dashboard for product teams. It runs unattended, at no cost.
 
-> **Status:** in development, milestone M1 (Foundation). The live dashboard will be linked here once the first end-to-end run is deployed (M2).
+**Live dashboard:** [benjammin-dev.github.io/feedback-intelligence](https://benjammin-dev.github.io/feedback-intelligence/), updated daily.
+
+> **Status:** in development. Milestone M2 (walking skeleton) is complete: the pipeline runs every day and publishes the weekly count of new winget-cli issues. Redaction, AI enrichment, and the full dashboard arrive in M3–M5.
 
 ## What it does
 
@@ -45,37 +49,42 @@ The Markdown files are the official versions; the PDFs are readable copies.
 
 ## Running locally
 
-## Running locally
+Development uses Windows with WSL 2, Docker Desktop, the .NET 10 SDK, and VS Code ([ADR 0012](docs/adr/0012-wsl2-docker-development.md)). Commands run in the WSL terminal from the repository root.
 
-Development uses Windows with WSL 2, Docker Desktop, the .NET 10 SDK, and VS Code ([ADR 0012](docs/adr/0012-wsl2-docker-development.md)).
-
-1. Create your local settings file and set your own password:
+**1. Start the local services** (SQL Server and Presidio):
 
 ```bash
-   cp .env.example .env
+cp .env.example .env    # first time only; then set your own password in .env
+docker compose up -d
 ```
 
-2. Start SQL Server and Presidio:
+**2. Build and test:**
 
 ```bash
-   docker compose up -d
-   docker compose ps   # wait until sqlserver shows (healthy)
+dotnet build
+dotnet test             # integration tests start their own SQL Server through Testcontainers
 ```
 
-3. Build and test:
+**3. Run the pipeline:**
 
 ```bash
-   dotnet build
-   dotnet test
+set -a; source .env; set +a
+export ConnectionStrings__FeedbackIntel="Server=localhost,1433;Database=FeedbackIntel;User Id=sa;Password=$MSSQL_SA_PASSWORD;TrustServerCertificate=True"
+export GITHUB_TOKEN=$(gh auth token)   # optional; without it GitHub allows 60 requests an hour
+dotnet run --project src/FeedbackIntel.Pipeline
 ```
 
-| Service | Address |
-|---|---|
-| SQL Server (Developer edition) | `localhost,1433`, user `sa`, password from `.env` |
-| Presidio analyzer | `http://localhost:5002` |
-| Presidio anonymizer | `http://localhost:5001` |
+Settings live in [`config/pipeline.json`](config/pipeline.json). Any value can be overridden with an environment variable, such as `Publishing__OutputDirectory`. Secrets only ever come from environment variables.
 
-Stop everything with `docker compose down`. Add `-v` to also delete the local database.
+**4. View the dashboard:**
+
+```bash
+cp dashboard/* out/site/
+python3 -m http.server 8080 --directory out/site
+```
+
+Then open http://localhost:8080.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, standards, and AI-assisted development policy.
