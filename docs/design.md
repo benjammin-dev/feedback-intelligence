@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.0 |
-| **Date** | 2026-10-18 |
+| **Version** | 1.1 |
+| **Date** | 2026-10-24 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Project plan](project-plan.md), [Requirements](requirements.md), [Data dictionary](data-dictionary.md), [Decision records](adr/README.md) |
 
@@ -205,13 +205,13 @@ The `data` branch holds only history files and is written only by the pipeline w
 
 ## 9. Open items to verify during the build
 
-| Item | When |
-|---|---|
-| Whether daily commits to the `data` branch keep scheduled workflows active (ADR 0005, risk R6) | M2 |
-| SQL Server container startup time on GitHub runners (assumption A4) | M2 |
-| Presidio accuracy on real issues, including custom recognizers (assumption A5) | M3 |
-| Dashboard load time with DuckDB-WASM (NFR-PERF-02) | M3 |
-| Model choice and prompt accuracy against the evaluation set (assumption A6) | M4 |
+| Item | When | Status |
+|---|---|---|
+| Whether daily commits to the `data` branch keep scheduled workflows active (ADR 0005, risk R6) | M3 | Moved from M2, because the `data` branch arrives with history in M3 |
+| SQL Server container startup time on GitHub runners (assumption A4) | M2 | Done: the container starts during the build step and is ready before the pipeline needs it (migration 0.7 s; whole run 49 s) |
+| Presidio accuracy on real issues, including custom recognizers (assumption A5) | M3 | Open |
+| Dashboard load time with DuckDB-WASM (NFR-PERF-02) | M3 | Open |
+| Model choice and prompt accuracy against the evaluation set (assumption A6) | M4 | Open |
 
 ---
 
@@ -219,4 +219,5 @@ The `data` branch holds only history files and is written only by the pipeline w
 
 | Version | Date | Change |
 |---|---|---|
+| 1.1 | 2026-10-24 | Recorded results of the M2 open items. |
 | 1.0 | 2026-10-18 | Initial design approved |
