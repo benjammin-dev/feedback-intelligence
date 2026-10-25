@@ -107,7 +107,7 @@ Issue authors never use the system, but their writing is what it processes. Prot
 |---|---|---|---|---|
 | A1 | GitHub Models will remain free, with rate limits close to today's | Check GitHub's docs; monitor rate-limit responses in the pipeline | Before AI work; ongoing | — |
 | A2 | GitHub's Issues API stays publicly accessible, and its rate limits suit daily incremental fetches | Make test calls against winget-cli and measure calls used per run | Walking skeleton | Confirmed in M2: a 90-day fetch for winget-cli finished in under 4 seconds, far inside the limits |
-| A3 | GitHub Actions and Pages stay free for public repositories | Check GitHub's docs and billing page | Before deployment | — |
+| A3 | GitHub Actions and Pages stay free for public repositories | Check GitHub's docs and billing page | Before deployment | Confirmed in M2: October's usage was fully covered by included usage, so the net cost was $0 |
 | A4 | SQL Server Express runs in a Docker container on GitHub's Linux runners within reasonable time | Run a test workflow that starts SQL Server and runs one query | Walking skeleton | Confirmed in M2: SQL Server was ready before the pipeline started (migration took 0.7 s); the whole run took 49 s |
 | A5 | Presidio detects the common PII in issues (emails, IPs, tokens, usernames in file paths) well enough | Test against a hand-checked sample of real issues | Before redaction is enabled | — |
 | A6 | The AI model classifies issues accurately enough to be useful | Measure against a hand-labeled set of about 100 issues | Before AI results are published | — |
@@ -196,7 +196,7 @@ Personal information is redacted from M3 onward, before any issue text is publis
 
 | Version | Date | Change |
 |---|---|---|
-| 1.3 | 2026-10-24 | Recorded actual time for M0–M2 and results for validated assumptions (A2, A4, A9). A8 now applies before issue titles are published, since the M2 dashboard shows only counts. |
+| 1.3 | 2026-10-24 | Recorded actual time for M0–M2 and results for validated assumptions (A2, A3, A4, A9). A8 now applies before issue titles are published, since the M2 dashboard shows only counts. |
 | 1.2 | 2026-10-19 | Updated the runtime constraint from .NET 8 to .NET 10, because .NET 8 support ends in November 2026 (ADR 0014). |
 | 1.1 | 2026-10-14 | Moved PII redaction from M4 to M3 so no issue text is published unredacted; renamed M3 and M4; added optional M8 for Could-have requirements. See [requirements](requirements.md). |
 | 1.0 | 2026-10-14 | Initial plan approved |
