@@ -17,6 +17,9 @@ internal static class PresidioTestServices
 
     private const int ContainerPort = 3000;
 
+    /// <summary>The analyzer loads a language model at startup, which is slow on a busy runner.</summary>
+    private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(5);
+
     private static readonly Lazy<Task<PrivacyOptions>> Options = new(StartAsync);
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
@@ -30,19 +33,57 @@ internal static class PresidioTestServices
         var anonymizer = Build(AnonymizerImage);
         await Task.WhenAll(analyzer.StartAsync(), anonymizer.StartAsync());
 
-        return new PrivacyOptions
+        var options = new PrivacyOptions
         {
             AnalyzerUrl = $"http://{analyzer.Hostname}:{analyzer.GetMappedPublicPort(ContainerPort)}",
             AnonymizerUrl = $"http://{anonymizer.Hostname}:{anonymizer.GetMappedPublicPort(ContainerPort)}",
         };
+
+        await Task.WhenAll(WaitUntilHealthyAsync(options.AnalyzerUrl), WaitUntilHealthyAsync(options.AnonymizerUrl));
+        return options;
     }
 
-    /// <remarks>The analyzer loads a language model at startup, so allow it a few minutes.</remarks>
     private static IContainer Build(string image) =>
         new ContainerBuilder(image)
             .WithPortBinding(ContainerPort, assignRandomHostPort: true)
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(
-                request => request.ForPort(ContainerPort).ForPath("/health"),
-                strategy => strategy.WithTimeout(TimeSpan.FromMinutes(5))))
             .Build();
+
+    /// <summary>
+    /// Polls the health endpoint with short requests until it answers. Testcontainers'
+    /// built-in HTTP wait sends one request with a 100-second timeout and gives up if it
+    /// hangs, which happens while the analyzer is still loading on a slow runner.
+    /// </summary>
+    private static async Task WaitUntilHealthyAsync(string baseUrl)
+    {
+        using var probe = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        var healthUrl = new Uri(new Uri(baseUrl), "health");
+        var deadline = DateTime.UtcNow + StartupTimeout;
+
+        while (true)
+        {
+            try
+            {
+                using var response = await probe.GetAsync(healthUrl);
+                if (response.IsSuccessStatusCode)
+                {
+                    return;
+                }
+            }
+            catch (HttpRequestException)
+            {
+                // Not listening yet.
+            }
+            catch (TaskCanceledException)
+            {
+                // Listening but not answering yet.
+            }
+
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new TimeoutException($"Presidio at {baseUrl} wasn't healthy within {StartupTimeout.TotalMinutes} minutes.");
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(2));
+        }
+    }
 }
