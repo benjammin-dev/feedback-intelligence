@@ -3,10 +3,12 @@ using FeedbackIntel.Core.Configuration;
 using FeedbackIntel.Core.Database;
 using FeedbackIntel.Core.Ingestion;
 using FeedbackIntel.Core.Orchestration;
+using FeedbackIntel.Core.Privacy;
 using FeedbackIntel.Core.Publishing;
 using FeedbackIntel.Core.Reporting;
 using FeedbackIntel.Infrastructure;
 using FeedbackIntel.Infrastructure.GitHub;
+using FeedbackIntel.Infrastructure.Privacy;
 using FeedbackIntel.Infrastructure.Publishing;
 using FeedbackIntel.Infrastructure.Sql;
 
@@ -47,6 +49,8 @@ internal static class PipelineServices
         services.AddSingleton<IReadOnlyList<RepositoryOptions>>(settings.Repositories);
         services.AddSingleton(settings.Ingestion);
         services.AddSingleton(settings.Publishing);
+        services.AddSingleton(settings.Privacy);
+        services.AddSingleton(settings.Text);
         services.AddSingleton(new DatabaseSettings(
             connectionString, TimeSpan.FromSeconds(settings.Operations.SqlStartupWaitSeconds)));
 
@@ -57,12 +61,17 @@ internal static class PipelineServices
         services.AddSingleton<IRunStore, SqlRunStore>();
         services.AddSingleton<IIssueSource, OctokitIssueSource>();
         services.AddSingleton<IIssueStore, SqlIssueStore>();
+        services.AddSingleton<IPiiRedactor>(provider => new PresidioRedactor(
+            new HttpClient { Timeout = TimeSpan.FromMinutes(2) },
+            provider.GetRequiredService<PrivacyOptions>()));
+        services.AddSingleton<ICleanedIssueStore, SqlCleanedIssueStore>();
         services.AddSingleton<IReportingBuilder, SqlReportingBuilder>();
         services.AddSingleton<IPublisher, JsonFilePublisher>();
 
         // Steps, in the order they run (numbers match the design's step table)
         services.AddSingleton<MigrateDatabaseStep>();   // 1
         services.AddSingleton<IngestIssuesStep>();      // 3
+        services.AddSingleton<RedactIssuesStep>();      // 4
         services.AddSingleton<RebuildReportingStep>();  // 6
         services.AddSingleton<PublishStep>();           // 9
 
@@ -73,6 +82,7 @@ internal static class PipelineServices
             [
                 provider.GetRequiredService<MigrateDatabaseStep>(),
                 provider.GetRequiredService<IngestIssuesStep>(),
+                provider.GetRequiredService<RedactIssuesStep>(),
                 provider.GetRequiredService<RebuildReportingStep>(),
                 provider.GetRequiredService<PublishStep>(),
             ];

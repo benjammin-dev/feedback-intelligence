@@ -14,4 +14,7 @@ public interface IIssueStore
 
     /// <summary>Adds issues to <c>raw.issue</c>.</summary>
     Task InsertRawIssuesAsync(IReadOnlyCollection<RawIssue> issues, CancellationToken cancellationToken);
+
+    /// <summary>Reads every issue in <c>raw.issue</c>, which holds only this run's fetch.</summary>
+    Task<IReadOnlyList<RawIssue>> ReadRawIssuesAsync(CancellationToken cancellationToken);
 }
