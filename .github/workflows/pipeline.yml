@@ -1,0 +1,78 @@
+# Daily pipeline: fetch issues, rebuild reporting data, and publish the dashboard (US-15).
+name: Pipeline
+
+on:
+  schedule:
+    # 13:17 UTC is 6:17 a.m. Pacific. Off the hour, because scheduled runs at :00 are often delayed.
+    - cron: "17 13 * * *"
+  workflow_dispatch:
+
+# Least privilege (NFR-SEC-02): read-only by default; only the deploy job can write to Pages.
+permissions:
+  contents: read
+
+# Never run two pipelines at once, and never cancel one partway through.
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Run pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up .NET (version from global.json)
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+
+      # A new random password every run, hidden from logs. The container only listens on the
+      # runner itself and is destroyed with it, so nothing persists (ADR 0004).
+      - name: Start SQL Server
+        run: |
+          password="Fi-$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          docker run --detach --name sqlserver \
+            --env ACCEPT_EULA=Y --env MSSQL_PID=Express --env "MSSQL_SA_PASSWORD=$password" \
+            --publish 127.0.0.1:1433:1433 \
+            mcr.microsoft.com/mssql/server:2022-latest
+          echo "ConnectionStrings__FeedbackIntel=Server=localhost,1433;Database=FeedbackIntel;User Id=sa;Password=$password;TrustServerCertificate=True" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: dotnet build src/FeedbackIntel.Pipeline --configuration Release
+
+      - name: Run pipeline
+        timeout-minutes: 40
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: dotnet run --project src/FeedbackIntel.Pipeline --configuration Release --no-build
+
+      - name: Assemble site
+        run: cp dashboard/* out/site/
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: out/site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
