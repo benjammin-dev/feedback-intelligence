@@ -1,4 +1,6 @@
 # Weekly checks for outdated or vulnerable dependencies (NFR-SEC-04).
+# Updates are grouped so related packages (for example the xUnit runner and test SDK)
+# move together in one pull request that CI tests as a whole.
 version: 2
 updates:
   - package-ecosystem: "nuget"
@@ -7,6 +9,9 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore"
+    groups:
+      nuget-packages:
+        patterns: ["*"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -14,3 +19,6 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "ci"
+    groups:
+      github-actions:
+        patterns: ["*"]
