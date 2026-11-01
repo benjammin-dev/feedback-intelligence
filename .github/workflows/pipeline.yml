@@ -51,8 +51,11 @@ jobs:
         run: |
           analyzer=$(grep -oE 'mcr\.microsoft\.com/presidio-analyzer:[^[:space:]"]+' docker-compose.yml)
           anonymizer=$(grep -oE 'mcr\.microsoft\.com/presidio-anonymizer:[^[:space:]"]+' docker-compose.yml)
-          docker run --detach --name presidio-analyzer --publish 127.0.0.1:5002:3000 "$analyzer"
-          docker run --detach --name presidio-anonymizer --publish 127.0.0.1:5001:3000 "$anonymizer"
+          # Gunicorn 25.1 sometimes never boots its worker when its control socket is on.
+          docker run --detach --name presidio-analyzer --publish 127.0.0.1:5002:3000 \
+            --env GUNICORN_CMD_ARGS=--no-control-socket "$analyzer"
+          docker run --detach --name presidio-anonymizer --publish 127.0.0.1:5001:3000 \
+            --env GUNICORN_CMD_ARGS=--no-control-socket "$anonymizer"
 
       # Vulnerability alerts stop CI and pull requests (NFR-SEC-04), but must not stop the daily
       # run: a new advisory for any package would otherwise freeze the dashboard until fixed.

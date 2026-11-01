@@ -48,6 +48,9 @@ internal static class PresidioTestServices
     private static IContainer Build(string image) =>
         new ContainerBuilder(image)
             .WithPortBinding(ContainerPort, assignRandomHostPort: true)
+            // Gunicorn 25.1 sometimes never boots its worker when its control socket is on,
+            // leaving the container listening but never answering. Matches docker-compose.yml.
+            .WithEnvironment("GUNICORN_CMD_ARGS", "--no-control-socket")
             .Build();
 
     /// <summary>
