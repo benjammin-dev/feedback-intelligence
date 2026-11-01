@@ -7,6 +7,7 @@
   "Ingestion": {
     "InitialHistoryDays": 90,
     "MaxRejectedPercent": 10,
+    "MinIssuesForRejectionCheck": 20,
     "RateLimitMaxWaitMinutes": 15
   },
   "Operations": {

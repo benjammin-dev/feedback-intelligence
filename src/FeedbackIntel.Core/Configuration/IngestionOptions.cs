@@ -12,6 +12,12 @@ public sealed class IngestionOptions
     /// </summary>
     public int MaxRejectedPercent { get; set; } = 10;
 
+    /// <summary>
+    /// The fewest fetched issues for which the rejection limit applies. Below this, a single
+    /// unusual issue would look like a high failure rate, so small runs aren't judged by it.
+    /// </summary>
+    public int MinIssuesForRejectionCheck { get; set; } = 20;
+
     /// <summary>The longest the pipeline waits for a GitHub rate-limit reset.</summary>
     public int RateLimitMaxWaitMinutes { get; set; } = 15;
 }

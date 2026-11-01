@@ -45,6 +45,15 @@ public class PipelineSettingsTests
     }
 
     [Fact]
+    public void FindProblems_RejectionCheckMinimumBelowOne_IsReported()
+    {
+        var settings = Valid();
+        settings.Ingestion.MinIssuesForRejectionCheck = 0;
+
+        Assert.Contains(settings.FindProblems(), problem => problem.Contains("MinIssuesForRejectionCheck", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void FindProblems_SeveralProblems_ReportsAll()
     {
         var settings = Valid();

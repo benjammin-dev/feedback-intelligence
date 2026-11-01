@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.2 |
-| **Date** | 2026-10-31 |
+| **Version** | 1.3 |
+| **Date** | 2026-11-01 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Project plan](project-plan.md), [Requirements](requirements.md), [Data dictionary](data-dictionary.md), [Decision records](adr/README.md) |
 
@@ -83,14 +83,15 @@ The **data contract** lists every field allowed in published and history files; 
 | — | Freshness check (after restore) | Stale-data alert if data is older than 48 hours; the run continues | — |
 | 1 | Migrate database | Alert | Waits up to 2 minutes for SQL Server; script errors not retried |
 | 2 | Restore history | Alert, unless it is a manual **bootstrap** run | No |
-| 3 | Ingest issues | Alert; also fails if more than 10% of records are rejected | Yes; waits for a rate-limit reset only if under 15 minutes |
+| 3 | Ingest issues | Alert; also fails if more than 10% of records are rejected, once at least 20 were fetched | Yes; waits for a rate-limit reset only if under 15 minutes |
 | 4 | Redact | Alert; **never continues without redaction** | Yes |
 | 5 | Enrich | Not a run failure: invalid answers become `unclassified`; unprocessed issues stay `pending` | Yes; requests spaced about 4 seconds apart; every attempt counts against the daily budget |
 | 6 | Rebuild reporting | Alert | No |
 | 7 | Build insights | Not a run failure: topics show "unavailable today"; a missing digest is generated on the next run | Yes |
 | 8 | Quality checks | Alert listing every failed check; nothing published | No |
 | 9 | Publish (write files) | Alert; contract violations are treated as possible privacy issues | Write errors yes; violations no |
-| 10 | Save history (write files) | Alert | Yes |
+| 10 | Advance watermarks | Alert. Runs only after publishing succeeded, so a failed run never skips issues | No |
+| 11 | Save history (write files) | Alert | Yes |
 | — | Workflow: deploy Pages, push history | Workflow-level alert, if the pipeline hasn't already raised one | Yes |
 
 **Two deliberate exceptions:** AI problems never fail the run, because the AI is an enhancement and the dashboard should still update. Redaction problems always fail it, because privacy is never traded for availability.
@@ -108,7 +109,8 @@ All tunable behavior lives in `config/pipeline.json`, validated against `config/
     { "Owner": "microsoft", "Name": "PowerToys",  "Enabled": false },
     { "Owner": "microsoft", "Name": "vscode",     "Enabled": false }
   ],
-  "Ingestion":      { "InitialHistoryDays": 90, "MaxRejectedPercent": 10, "RateLimitMaxWaitMinutes": 15 },
+  "Ingestion":      { "InitialHistoryDays": 90, "MaxRejectedPercent": 10, "MinIssuesForRejectionCheck": 20,
+                      "RateLimitMaxWaitMinutes": 15 },
   "Classification": { "Categories": [ "bug", "feature_request", "question", "docs", "performance" ],
                       "Severities": [ "low", "medium", "high", "critical" ] },
   "Ai":             { "Endpoint": "https://models.github.ai/inference", "Model": "openai/gpt-4.1-mini",
@@ -221,6 +223,7 @@ The `data` branch holds only history files and is written only by the pipeline w
 
 | Version | Date | Change |
 |---|---|---|
+| 1.3 | 2026-11-01 | Added the advance-watermarks step before saving history; the rejection limit applies once at least 20 issues were fetched, so small incremental runs aren't failed by one unusual issue. |
 | 1.2 | 2026-10-31 | Added the `Privacy` section to the configuration sample. |
 | 1.1 | 2026-10-24 | Recorded results of the M2 open items. |
 | 1.0 | 2026-10-18 | Initial design approved |
