@@ -22,6 +22,7 @@
     "BodyMaxCharacters": 4000
   },
   "Publishing": {
-    "OutputDirectory": "out/site"
+    "OutputDirectory": "out/site",
+    "HistoryDirectory": "out/history"
   }
 }

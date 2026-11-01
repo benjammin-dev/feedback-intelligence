@@ -6,6 +6,11 @@ on:
     # 13:17 UTC is 6:17 a.m. Pacific. Off the hour, because scheduled runs at :00 are often delayed.
     - cron: "17 13 * * *"
   workflow_dispatch:
+    inputs:
+      bootstrap:
+        description: "First run only: start without history (the data branch doesn't exist yet)"
+        type: boolean
+        default: false
 
 # Least privilege (NFR-SEC-02): read-only by default; only the deploy job can write to Pages.
 permissions:
@@ -30,6 +35,15 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: "10.0.401"
+
+      # History lives on the data branch (ADR 0005). A missing branch fails the run, unless
+      # this is the deliberate first run with the bootstrap option.
+      - name: Check out history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        continue-on-error: ${{ inputs.bootstrap == true }}
+        with:
+          ref: data
+          path: out/history
 
       # A new random password every run, hidden from logs. The container only listens on the
       # runner itself and is destroyed with it, so nothing persists (ADR 0004).
@@ -80,10 +94,20 @@ jobs:
         timeout-minutes: 40
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          Operations__Bootstrap: ${{ inputs.bootstrap == true }}
         run: dotnet run --project src/FeedbackIntel.Pipeline --configuration Release --no-build
 
       - name: Assemble site
         run: cp dashboard/* out/site/
+
+      # Handed to the save-history job, the only one allowed to write to the repository.
+      - name: Upload history
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: history
+          path: out/history/*.parquet
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Upload site
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
@@ -106,3 +130,42 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  # The only job that can write to the repository, and only to the data branch.
+  save-history:
+    name: Save history to the data branch
+    needs: run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download history
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: history
+          path: ${{ runner.temp }}/history
+
+      - name: Commit history to the data branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin data >/dev/null; then
+            git fetch --depth 1 origin data
+            git switch data
+            git rm -r -q .
+          else
+            git switch --orphan data
+          fi
+          cp "$RUNNER_TEMP"/history/*.parquet .
+          git add -- *.parquet
+          if git diff --cached --quiet; then
+            echo "History unchanged"
+            exit 0
+          fi
+          git commit -q -m "data: history from run ${{ github.run_id }}"
+          git push origin data
