@@ -4,6 +4,7 @@ using Dapper;
 
 using FeedbackIntel.Core.Configuration;
 using FeedbackIntel.Core.Model;
+using FeedbackIntel.Core.Orchestration;
 using FeedbackIntel.Core.Text;
 using FeedbackIntel.Infrastructure.Publishing;
 using FeedbackIntel.Infrastructure.Sql;
@@ -59,7 +60,7 @@ public class ReportingAndPublishingTests
 
         try
         {
-            await new JsonFilePublisher(settings, new PublishingOptions { OutputDirectory = output })
+            await new SitePublisher(settings, new PublishingOptions { OutputDirectory = output })
                 .PublishAsync(CancellationToken.None);
 
             using var overview = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(output, "data", "overview.json")));
@@ -85,6 +86,70 @@ public class ReportingAndPublishingTests
         }
     }
 
+    [Fact]
+    public async Task Rebuild_IssueTable_HasRedactedTitleAndDaysToClose()
+    {
+        var settings = await SeedAndRebuildAsync();
+
+        await using var connection = new SqlConnection(settings.ConnectionString);
+        var row = await connection.QuerySingleAsync<(string Title, decimal? DaysToClose, string AiStatus, string? Category)>(
+            """
+            SELECT title, days_to_close, ai_status, category
+            FROM reporting.issue
+            WHERE repository = 'microsoft/winget-cli' AND issue_number = 4
+            """);
+        Assert.Equal("Test issue", row.Title);
+        Assert.Equal(7.0m, row.DaysToClose);
+        Assert.Equal("pending", row.AiStatus);
+        Assert.Null(row.Category);
+        Assert.Equal(6, await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM reporting.issue"));
+    }
+
+    [Fact]
+    public async Task Rebuild_WeeklyMetrics_CoversCompleteWeeksInTheHistoryWindow()
+    {
+        var settings = await SeedAndRebuildAsync();
+
+        await using var connection = new SqlConnection(settings.ConnectionString);
+        var weeks = (await connection.QueryAsync<(DateTime WeekStart, int New, int Closed, decimal? Median)>(
+            """
+            SELECT week_start, new_issues, closed_issues, median_days_to_close
+            FROM reporting.weekly_metrics
+            WHERE repository = 'microsoft/winget-cli'
+            ORDER BY week_start
+            """)).ToList();
+
+        // AsOf is Saturday Oct 24, so the current week (from Monday Oct 19) is left out.
+        // The 90-day window starts Sunday Jul 26, so the first full week starts Monday Jul 27.
+        Assert.Equal(12, weeks.Count);
+        Assert.Equal(new DateTime(2026, 7, 27), weeks[0].WeekStart);
+        Assert.Equal(new DateTime(2026, 10, 12), weeks[^1].WeekStart);
+        Assert.Equal((2, 2, (decimal?)5.5m), (weeks[^1].New, weeks[^1].Closed, weeks[^1].Median));
+        Assert.Equal((1, 0, (decimal?)null), (weeks[^2].New, weeks[^2].Closed, weeks[^2].Median));
+    }
+
+    [Fact]
+    public async Task Rebuild_WeeklyMetrics_AllRowMatchesSingleRepositoryHere()
+    {
+        var settings = await SeedAndRebuildAsync();
+
+        await using var connection = new SqlConnection(settings.ConnectionString);
+        var all = await connection.ExecuteScalarAsync<int>(
+            "SELECT new_issues FROM reporting.weekly_metrics WHERE repository = 'all' AND week_start = '2026-10-12'");
+        Assert.Equal(2, all);
+    }
+
+    [Fact]
+    public async Task Rebuild_RunHealth_ListsFinishedRunsWithDuration()
+    {
+        var settings = await SeedAndRebuildAsync();
+
+        await using var connection = new SqlConnection(settings.ConnectionString);
+        var run = await connection.QuerySingleAsync<(long RunId, int? Duration, string Status)>(
+            "SELECT run_id, duration_seconds, status FROM reporting.run_health");
+        Assert.Equal((41L, (int?)90, "succeeded"), run);
+    }
+
     private static async Task<DatabaseSettings> SeedAndRebuildAsync()
     {
         var settings = await SqlServerTestDatabase.CreateMigratedAsync();
@@ -104,7 +169,11 @@ public class ReportingAndPublishingTests
             runId: 42,
             CancellationToken.None);
 
-        await new SqlReportingBuilder(settings).RebuildAsync(AsOf, 42, CancellationToken.None);
+        await new SqlRunStore(settings).SaveAsync(
+            new RunRecord { RunId = 41, Trigger = "schedule", StartedAt = AsOf.AddDays(-1) }.AsSucceeded(AsOf.AddDays(-1).AddSeconds(90)),
+            CancellationToken.None);
+
+        await new SqlReportingBuilder(settings, new IngestionOptions { InitialHistoryDays = 90 }).RebuildAsync(AsOf, 42, CancellationToken.None);
         return settings;
     }
 

@@ -73,7 +73,7 @@ internal static class PipelineServices
             provider.GetRequiredService<RetryPolicy>()));
         services.AddSingleton<ICleanedIssueStore, SqlCleanedIssueStore>();
         services.AddSingleton<IReportingBuilder, SqlReportingBuilder>();
-        services.AddSingleton<IPublisher, JsonFilePublisher>();
+        services.AddSingleton<IPublisher, SitePublisher>();
         services.AddSingleton<IHistoryStore, ParquetHistoryStore>();
 
         // Steps, in the order they run (numbers match the design's step table)

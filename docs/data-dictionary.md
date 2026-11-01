@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.4 |
+| **Version** | 1.5 |
 | **Date** | 2026-11-01 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Requirements](requirements.md), [ADR 0009: data layers](adr/0009-raw-cleaned-reporting-layers.md), [ADR 0013: bodies excluded from history](adr/0013-exclude-bodies-from-history.md) |
@@ -227,10 +227,10 @@ Weekly totals for the Trends page (US-02). One row per repository per week, plus
 | Column | Type | What it does and why |
 |---|---|---|
 | `repository` | `varchar(201)` | A repository name, or `all`. |
-| `week_start` | `date` | The Monday the week begins. Weeks start on Monday (the ISO standard) so they're consistent everywhere. |
+| `week_start` | `date` | The Monday the week begins. Weeks start on Monday (the ISO standard) so they're consistent everywhere. Only complete weeks are included, starting with the first full week of a repository's initial history window; the current week is covered by the Overview instead. Published as a timestamp at midnight UTC. |
 | `new_issues` | `int` | Issues opened that week. Drives the volume chart. |
 | `closed_issues` | `int` | Issues closed that week. Shows whether the backlog is growing or shrinking. |
-| `critical_count` | `int` | Critical issues opened that week. Highlights severity spikes. |
+| `critical_count` | `int` | Critical issues opened that week. Highlights severity spikes. Empty until AI classification exists (M4). |
 | `median_days_to_close` | `decimal(7,1)` | Median days to close for issues closed that week. Shows whether fixes are getting faster. |
 
 ### `reporting.weekly_category`
@@ -311,7 +311,7 @@ A single row of facts about the current data, published as a tiny file the dashb
 
 ## 7. Data contract
 
-The data contract is the **complete list of what may ever leave the pipeline**. Anything not listed is forbidden. An **automated test** compares the columns in every output file against this list, so adding a field requires changing this contract through a pull request (NFR-PRIV-02).
+The data contract is the **complete list of what may ever leave the pipeline**. Anything not listed is forbidden. An **automated test** reads the tables below directly from this document and compares every output file and its columns against them, so adding a file or field requires changing this contract through a pull request (NFR-PRIV-02). Keep the table formats below unchanged, since the test parses them.
 
 ### Output 1: published dashboard files (GitHub Pages)
 
@@ -364,6 +364,7 @@ The two small JSON files let the dashboard show the Overview page immediately wh
 
 | Version | Date | Change |
 |---|---|---|
+| 1.5 | 2026-11-01 | Noted which weeks `reporting.weekly_metrics` covers and how `week_start` is published. The automated data contract test now reads section 7 directly. |
 | 1.4 | 2026-11-01 | Clarified that ingestion resumes at, not after, the watermark. |
 | 1.3 | 2026-10-31 | Clarified that `reporting.site_info.data_updated_at` is the run's start time. |
 | 1.2 | 2026-10-24 | Noted which `reporting.overview` and `reporting.site_info` columns are empty until AI enrichment exists, and that the median is empty when nothing closed. |
