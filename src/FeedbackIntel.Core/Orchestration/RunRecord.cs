@@ -47,4 +47,23 @@ public sealed class RunRecord
     /// never issue content, because it is saved to public history.
     /// </summary>
     public string? ErrorMessage { get; set; }
+
+    /// <summary>
+    /// A copy of this record marked as succeeded. Saved into history by the last step, which
+    /// only runs when every other step has succeeded.
+    /// </summary>
+    public RunRecord AsSucceeded(DateTime finishedAt) => new()
+    {
+        RunId = RunId,
+        Trigger = Trigger,
+        StartedAt = StartedAt,
+        FinishedAt = finishedAt,
+        Status = RunStatus.Succeeded,
+        IssuesFetched = IssuesFetched,
+        IssuesRejected = IssuesRejected,
+        IssuesRedacted = IssuesRedacted,
+        AiRequests = AiRequests,
+        AiCacheHits = AiCacheHits,
+        IssuesUnclassified = IssuesUnclassified,
+    };
 }

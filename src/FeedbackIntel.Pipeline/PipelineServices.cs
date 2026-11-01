@@ -1,6 +1,7 @@
 using FeedbackIntel.Core;
 using FeedbackIntel.Core.Configuration;
 using FeedbackIntel.Core.Database;
+using FeedbackIntel.Core.History;
 using FeedbackIntel.Core.Ingestion;
 using FeedbackIntel.Core.Orchestration;
 using FeedbackIntel.Core.Privacy;
@@ -9,6 +10,7 @@ using FeedbackIntel.Core.Reporting;
 using FeedbackIntel.Core.Resilience;
 using FeedbackIntel.Infrastructure;
 using FeedbackIntel.Infrastructure.GitHub;
+using FeedbackIntel.Infrastructure.History;
 using FeedbackIntel.Infrastructure.Privacy;
 using FeedbackIntel.Infrastructure.Publishing;
 using FeedbackIntel.Infrastructure.Sql;
@@ -52,6 +54,7 @@ internal static class PipelineServices
         services.AddSingleton(settings.Publishing);
         services.AddSingleton(settings.Privacy);
         services.AddSingleton(settings.Text);
+        services.AddSingleton(settings.Operations);
         services.AddSingleton(new DatabaseSettings(
             connectionString, TimeSpan.FromSeconds(settings.Operations.SqlStartupWaitSeconds)));
 
@@ -71,14 +74,17 @@ internal static class PipelineServices
         services.AddSingleton<ICleanedIssueStore, SqlCleanedIssueStore>();
         services.AddSingleton<IReportingBuilder, SqlReportingBuilder>();
         services.AddSingleton<IPublisher, JsonFilePublisher>();
+        services.AddSingleton<IHistoryStore, ParquetHistoryStore>();
 
         // Steps, in the order they run (numbers match the design's step table)
         services.AddSingleton<MigrateDatabaseStep>();   // 1
+        services.AddSingleton<RestoreHistoryStep>();    // 2
         services.AddSingleton<IngestIssuesStep>();      // 3
         services.AddSingleton<RedactIssuesStep>();      // 4
         services.AddSingleton<RebuildReportingStep>();  // 6
         services.AddSingleton<PublishStep>();           // 9
         services.AddSingleton<AdvanceWatermarksStep>(); // 10: only after everything else succeeded
+        services.AddSingleton<SaveHistoryStep>();       // 11
 
         services.AddSingleton(provider =>
         {
@@ -86,11 +92,13 @@ internal static class PipelineServices
             IPipelineStep[] steps =
             [
                 provider.GetRequiredService<MigrateDatabaseStep>(),
+                provider.GetRequiredService<RestoreHistoryStep>(),
                 provider.GetRequiredService<IngestIssuesStep>(),
                 provider.GetRequiredService<RedactIssuesStep>(),
                 provider.GetRequiredService<RebuildReportingStep>(),
                 provider.GetRequiredService<PublishStep>(),
                 provider.GetRequiredService<AdvanceWatermarksStep>(),
+                provider.GetRequiredService<SaveHistoryStep>(),
             ];
 
             return new PipelineOrchestrator(

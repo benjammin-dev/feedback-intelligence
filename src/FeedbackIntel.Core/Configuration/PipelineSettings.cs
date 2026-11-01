@@ -67,6 +67,11 @@ public sealed class PipelineSettings
             problems.Add("Publishing:OutputDirectory must not be empty.");
         }
 
+        if (string.IsNullOrWhiteSpace(Publishing.HistoryDirectory))
+        {
+            problems.Add("Publishing:HistoryDirectory must not be empty.");
+        }
+
         if (!IsHttpUrl(Privacy.AnalyzerUrl) || !IsHttpUrl(Privacy.AnonymizerUrl))
         {
             problems.Add("Privacy:AnalyzerUrl and Privacy:AnonymizerUrl must be absolute http or https URLs.");
