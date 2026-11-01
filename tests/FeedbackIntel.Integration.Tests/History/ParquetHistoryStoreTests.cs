@@ -5,6 +5,7 @@ using FeedbackIntel.Core.Model;
 using FeedbackIntel.Core.Orchestration;
 using FeedbackIntel.Core.Text;
 using FeedbackIntel.Infrastructure.History;
+using FeedbackIntel.Infrastructure.ParquetFiles;
 using FeedbackIntel.Infrastructure.Sql;
 using FeedbackIntel.Integration.Tests.Sql;
 
@@ -54,7 +55,7 @@ public class ParquetHistoryStoreTests : IDisposable
     {
         var target = await SaveAndRestoreAsync();
 
-        Assert.DoesNotContain("body_redacted", HistoryFile<IssueRow>.ColumnNames);
+        Assert.DoesNotContain("body_redacted", ParquetTable<IssueRow>.ColumnNames);
         await using var connection = new SqlConnection(target.ConnectionString);
         Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM cleaned.issue WHERE body_redacted IS NOT NULL"));
     }

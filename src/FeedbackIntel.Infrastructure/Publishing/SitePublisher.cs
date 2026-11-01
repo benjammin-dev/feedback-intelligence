@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using FeedbackIntel.Core.Configuration;
 using FeedbackIntel.Core.Publishing;
+using FeedbackIntel.Infrastructure.ParquetFiles;
 using FeedbackIntel.Infrastructure.Sql;
 
 using Microsoft.Data.SqlClient;
@@ -10,16 +11,17 @@ using Microsoft.Data.SqlClient;
 namespace FeedbackIntel.Infrastructure.Publishing;
 
 /// <summary>
-/// Writes reporting tables to JSON files in <c>{OutputDirectory}/data</c>. Column names
-/// are written exactly as in the database, so the files match the data contract.
+/// Writes the dashboard's data files to <c>{OutputDirectory}/data</c>: two small JSON files
+/// the Overview page loads first, and Parquet files for the other pages. Column names match
+/// the database and the data contract exactly.
 /// </summary>
-public sealed class JsonFilePublisher(DatabaseSettings settings, PublishingOptions options) : IPublisher
+public sealed class SitePublisher(DatabaseSettings settings, PublishingOptions options) : IPublisher
 {
     /// <summary>
-    /// Every file this publisher may write. Each reads only from the reporting schema and
-    /// lists its columns explicitly, so a new column is never published by accident.
+    /// The JSON files. Each reads only from the reporting schema and lists its columns
+    /// explicitly, so a new column is never published by accident.
     /// </summary>
-    internal static readonly IReadOnlyList<PublishedFile> Files =
+    internal static readonly IReadOnlyList<PublishedFile> JsonFiles =
     [
         new(
             "site_info.json",
@@ -40,6 +42,17 @@ public sealed class JsonFilePublisher(DatabaseSettings settings, PublishingOptio
             SingleRow: false),
     ];
 
+    /// <summary>
+    /// The Parquet files, read by the dashboard with DuckDB-WASM (ADR 0008). Each one's
+    /// columns are exactly its row class's properties.
+    /// </summary>
+    internal static readonly IReadOnlyList<IPublishedParquetFile> ParquetFiles =
+    [
+        new PublishedParquetFile<IssueReportRow>("issues.parquet", "reporting.issue", "repository, issue_number"),
+        new PublishedParquetFile<WeeklyMetricsRow>("weekly_metrics.parquet", "reporting.weekly_metrics", "repository, week_start"),
+        new PublishedParquetFile<RunHealthRow>("run_health.parquet", "reporting.run_health", "started_at DESC"),
+    ];
+
     /// <inheritdoc />
     public async Task PublishAsync(CancellationToken cancellationToken)
     {
@@ -49,7 +62,7 @@ public sealed class JsonFilePublisher(DatabaseSettings settings, PublishingOptio
         await using var connection = new SqlConnection(settings.ConnectionString);
         await connection.OpenAsync(cancellationToken);
 
-        foreach (var file in Files)
+        foreach (var file in JsonFiles)
         {
             await using var command = new SqlCommand(file.Query, connection);
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -77,6 +90,11 @@ public sealed class JsonFilePublisher(DatabaseSettings settings, PublishingOptio
             }
 
             await writer.FlushAsync(cancellationToken);
+        }
+
+        foreach (var file in ParquetFiles)
+        {
+            await file.WriteAsync(connection, dataDirectory, cancellationToken);
         }
     }
 
@@ -122,4 +140,32 @@ public sealed class JsonFilePublisher(DatabaseSettings settings, PublishingOptio
 
     /// <summary>One published file and the query that fills it.</summary>
     internal sealed record PublishedFile(string Name, string Query, bool SingleRow);
+}
+
+/// <summary>One published Parquet file.</summary>
+internal interface IPublishedParquetFile
+{
+    /// <summary>The file name, for example <c>issues.parquet</c>.</summary>
+    string FileName { get; }
+
+    /// <summary>The columns the file contains. The data contract test compares these.</summary>
+    IReadOnlyList<string> ColumnNames { get; }
+
+    /// <summary>Writes the file into <paramref name="directory"/>.</summary>
+    Task WriteAsync(SqlConnection connection, string directory, CancellationToken cancellationToken);
+}
+
+/// <summary>Publishes one reporting table using the row class <typeparamref name="TRow"/>.</summary>
+internal sealed class PublishedParquetFile<TRow>(string fileName, string table, string orderBy) : IPublishedParquetFile
+    where TRow : class, new()
+{
+    /// <inheritdoc />
+    public string FileName => fileName;
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> ColumnNames => ParquetTable<TRow>.ColumnNames;
+
+    /// <inheritdoc />
+    public Task WriteAsync(SqlConnection connection, string directory, CancellationToken cancellationToken) =>
+        ParquetTable<TRow>.WriteAsync(connection, table, orderBy, Path.Combine(directory, fileName), cancellationToken);
 }

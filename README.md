@@ -87,6 +87,10 @@ python3 -m http.server 8080 --directory out/site
 
 Then open http://localhost:8080.
 
+## Data use
+
+The pipeline reads public issues through GitHub's API, within its rate limits. It never stores usernames, removes personal information such as emails, IP addresses, and access tokens before anything is saved or published, and publishes only redacted titles and AI summaries, each linking back to the original issue. If you'd like an issue removed from the dashboard, [open an issue](https://github.com/benjammin-dev/feedback-intelligence/issues) with its link.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, standards, and AI-assisted development policy.

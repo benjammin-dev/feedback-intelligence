@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.5 |
+| **Version** | 1.6 |
 | **Date** | 2026-11-01 |
 | **Owner** | Benjamin Rose |
 
@@ -112,7 +112,7 @@ Issue authors never use the system, but their writing is what it processes. Prot
 | A5 | Presidio detects the common PII in issues (emails, IPs, tokens, usernames in file paths) well enough | Test against a hand-checked sample of real issues | Before redaction is enabled | — |
 | A6 | The AI model classifies issues accurately enough to be useful | Measure against a hand-labeled set of about 100 issues | Before AI results are published | — |
 | A7 | winget-cli's issue volume fits within the free AI limits, including the first backfill | Count issues over the planned history window; estimate requests needed | Before first AI run | — |
-| A8 | Analyzing public issues and showing summaries with links to the originals is permitted | Review GitHub's terms of service and acceptable use policies | Before issue titles or summaries are published (M3) | — |
+| A8 | Analyzing public issues and showing summaries with links to the originals is permitted | Review GitHub's terms of service and acceptable use policies | Before issue titles or summaries are published (M3) | Reviewed 2026-11-01: GitHub's Acceptable Use Policies allow using public information collected through the API, and prohibit spam, selling personal information, and excessive automated activity. The project uses the API within rate limits, stores no usernames, redacts personal information, publishes only redacted titles and summaries with links to the originals, and removes issues on request (see README). This is a reading of the policies, not legal advice |
 | A9 | A Windows PC running WSL 2 (Ubuntu) and Docker Desktop can run SQL Server and Presidio containers for local development, with VS Code connected to WSL | Install WSL, Docker Desktop, and VS Code; start both containers and connect from SSMS | Before development starts | Confirmed in M1 |
 
 ---
@@ -198,6 +198,7 @@ Personal information is redacted from M3 onward, before any issue text is publis
 
 | Version | Date | Change |
 |---|---|---|
+| 1.6 | 2026-11-01 | Recorded the review of assumption A8 before issue titles are published. |
 | 1.5 | 2026-11-01 | Recorded that M2's daily schedule was confirmed by scheduled runs from 2026-10-26. |
 | 1.4 | 2026-10-31 | Added config validation in CI (FR-CFG-02) and the test strategy document to M3; noted that M2 needs a successful scheduled run. |
 | 1.3 | 2026-10-24 | Recorded actual time for M0–M2 and results for validated assumptions (A2, A3, A4, A9). A8 now applies before issue titles are published, since the M2 dashboard shows only counts. |
