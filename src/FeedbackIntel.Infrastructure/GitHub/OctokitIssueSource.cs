@@ -1,13 +1,22 @@
 using FeedbackIntel.Core;
+using FeedbackIntel.Core.Configuration;
 using FeedbackIntel.Core.Ingestion;
 using FeedbackIntel.Core.Model;
+using FeedbackIntel.Core.Resilience;
 
 using Octokit;
 
 namespace FeedbackIntel.Infrastructure.GitHub;
 
-/// <summary>Fetches issues from the GitHub REST API using Octokit.</summary>
-public sealed class OctokitIssueSource(IGitHubClient client, IClock clock) : IIssueSource
+/// <summary>
+/// Fetches issues from the GitHub REST API using Octokit. Temporary errors are retried,
+/// and a rate limit is waited out if it resets soon enough (FR-ING-04).
+/// </summary>
+public sealed class OctokitIssueSource(
+    IGitHubClient client,
+    IClock clock,
+    IngestionOptions options,
+    RetryPolicy retry) : IIssueSource
 {
     private static readonly ApiOptions AllPages = new() { PageSize = 100 };
 
@@ -24,7 +33,11 @@ public sealed class OctokitIssueSource(IGitHubClient client, IClock clock) : IIs
             SortDirection = SortDirection.Ascending,
         };
 
-        var issues = await client.Issue.GetAllForRepository(repository.Owner, repository.Name, request, AllPages);
+        var maxRateLimitWait = TimeSpan.FromMinutes(options.RateLimitMaxWaitMinutes);
+        var issues = await retry.ExecuteAsync(
+            _ => client.Issue.GetAllForRepository(repository.Owner, repository.Name, request, AllPages),
+            (error, attempt) => GitHubRetry.RetryAfter(error, attempt, maxRateLimitWait),
+            cancellationToken);
         var fetchedAt = clock.UtcNow;
 
         return ToRawIssues(issues, repository.Id, fetchedAt);

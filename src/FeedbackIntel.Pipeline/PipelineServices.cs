@@ -6,6 +6,7 @@ using FeedbackIntel.Core.Orchestration;
 using FeedbackIntel.Core.Privacy;
 using FeedbackIntel.Core.Publishing;
 using FeedbackIntel.Core.Reporting;
+using FeedbackIntel.Core.Resilience;
 using FeedbackIntel.Infrastructure;
 using FeedbackIntel.Infrastructure.GitHub;
 using FeedbackIntel.Infrastructure.Privacy;
@@ -56,6 +57,7 @@ internal static class PipelineServices
 
         // Adapters: real services behind Core's interfaces
         services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton(RetryPolicy.Default);
         services.AddSingleton<IGitHubClient>(_ => CreateGitHubClient(configuration["GITHUB_TOKEN"]));
         services.AddSingleton<IDatabaseMigrator, SqlDatabaseMigrator>();
         services.AddSingleton<IRunStore, SqlRunStore>();
@@ -64,7 +66,8 @@ internal static class PipelineServices
         services.AddSingleton<IWatermarkStore, SqlWatermarkStore>();
         services.AddSingleton<IPiiRedactor>(provider => new PresidioRedactor(
             new HttpClient { Timeout = TimeSpan.FromMinutes(2) },
-            provider.GetRequiredService<PrivacyOptions>()));
+            provider.GetRequiredService<PrivacyOptions>(),
+            provider.GetRequiredService<RetryPolicy>()));
         services.AddSingleton<ICleanedIssueStore, SqlCleanedIssueStore>();
         services.AddSingleton<IReportingBuilder, SqlReportingBuilder>();
         services.AddSingleton<IPublisher, JsonFilePublisher>();

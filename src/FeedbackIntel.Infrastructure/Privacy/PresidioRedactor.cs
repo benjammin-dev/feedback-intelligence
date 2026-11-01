@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using FeedbackIntel.Core.Configuration;
 using FeedbackIntel.Core.Privacy;
+using FeedbackIntel.Core.Resilience;
 
 namespace FeedbackIntel.Infrastructure.Privacy;
 
@@ -16,7 +17,7 @@ namespace FeedbackIntel.Infrastructure.Privacy;
 /// for people's names and URLs are deliberately not used: they flag product names and
 /// ordinary links, which would damage titles without protecting anyone.
 /// </remarks>
-public sealed class PresidioRedactor(HttpClient http, PrivacyOptions options) : IPiiRedactor
+public sealed class PresidioRedactor(HttpClient http, PrivacyOptions options, RetryPolicy retry) : IPiiRedactor
 {
     public const string GitHubTokenEntity = "GITHUB_TOKEN";
     public const string PathUsernameEntity = "PATH_USERNAME";
@@ -88,7 +89,10 @@ public sealed class PresidioRedactor(HttpClient http, PrivacyOptions options) : 
     /// Error messages contain only the status code, never the text, because they can reach
     /// public run logs. Any failure stops the run: the pipeline never continues unredacted.
     /// </remarks>
-    private async Task<T> PostAsync<T>(Uri uri, object body, CancellationToken cancellationToken)
+    private Task<T> PostAsync<T>(Uri uri, object body, CancellationToken cancellationToken) =>
+        retry.ExecuteAsync(token => PostOnceAsync<T>(uri, body, token), RetryAfter, cancellationToken);
+
+    private async Task<T> PostOnceAsync<T>(Uri uri, object body, CancellationToken cancellationToken)
     {
         using var response = await http.PostAsJsonAsync(uri, body, JsonOptions, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -96,6 +100,18 @@ public sealed class PresidioRedactor(HttpClient http, PrivacyOptions options) : 
         return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken)
             ?? throw new InvalidOperationException($"Presidio returned an empty response from {uri.AbsolutePath}.");
     }
+
+    /// <summary>
+    /// Retries Presidio errors that are likely temporary: no connection, a timeout, or a
+    /// server error. A 4xx response means the request itself is wrong, so it isn't retried.
+    /// </summary>
+    internal static TimeSpan? RetryAfter(Exception error, int retry) => error switch
+    {
+        HttpRequestException { StatusCode: null } => RetryPolicy.Backoff(retry),
+        HttpRequestException { StatusCode: { } status } when (int)status >= 500 => RetryPolicy.Backoff(retry),
+        TaskCanceledException => RetryPolicy.Backoff(retry),
+        _ => null,
+    };
 
     private sealed record AnalyzeRequest(
         string Text,

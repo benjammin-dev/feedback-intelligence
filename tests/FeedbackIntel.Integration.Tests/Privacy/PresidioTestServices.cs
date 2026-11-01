@@ -2,6 +2,7 @@ using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 
 using FeedbackIntel.Core.Configuration;
+using FeedbackIntel.Core.Resilience;
 using FeedbackIntel.Infrastructure.Privacy;
 
 namespace FeedbackIntel.Integration.Tests.Privacy;
@@ -25,7 +26,7 @@ internal static class PresidioTestServices
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
 
     public static async Task<PresidioRedactor> CreateRedactorAsync() =>
-        new(Http, await Options.Value);
+        new(Http, await Options.Value, RetryPolicy.Default);
 
     private static async Task<PrivacyOptions> StartAsync()
     {
