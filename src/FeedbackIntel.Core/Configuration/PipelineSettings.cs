@@ -18,6 +18,12 @@ public sealed class PipelineSettings
     /// <summary>Where output is written.</summary>
     public PublishingOptions Publishing { get; set; } = new();
 
+    /// <summary>Where the redaction services are, and how sensitive they are.</summary>
+    public PrivacyOptions Privacy { get; set; } = new();
+
+    /// <summary>How issue text is kept.</summary>
+    public TextOptions Text { get; set; } = new();
+
     /// <summary>
     /// Returns every problem with the settings, so a bad config file fails at startup
     /// with a clear message instead of partway through a run (FR-CFG-01).
@@ -56,6 +62,24 @@ public sealed class PipelineSettings
             problems.Add("Publishing:OutputDirectory must not be empty.");
         }
 
+        if (!IsHttpUrl(Privacy.AnalyzerUrl) || !IsHttpUrl(Privacy.AnonymizerUrl))
+        {
+            problems.Add("Privacy:AnalyzerUrl and Privacy:AnonymizerUrl must be absolute http or https URLs.");
+        }
+
+        if (Privacy.ScoreThreshold is < 0 or > 1)
+        {
+            problems.Add("Privacy:ScoreThreshold must be between 0 and 1.");
+        }
+
+        if (Text.BodyMaxCharacters is < 1 or > 4000)
+        {
+            problems.Add("Text:BodyMaxCharacters must be between 1 and 4000, the size of cleaned.issue.body_redacted.");
+        }
+
         return problems;
     }
+
+    private static bool IsHttpUrl(string value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 }

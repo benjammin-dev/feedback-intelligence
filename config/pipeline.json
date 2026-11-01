@@ -12,6 +12,14 @@
   "Operations": {
     "SqlStartupWaitSeconds": 120
   },
+  "Privacy": {
+    "AnalyzerUrl": "http://localhost:5002",
+    "AnonymizerUrl": "http://localhost:5001",
+    "ScoreThreshold": 0.5
+  },
+  "Text": {
+    "BodyMaxCharacters": 4000
+  },
   "Publishing": {
     "OutputDirectory": "out/site"
   }

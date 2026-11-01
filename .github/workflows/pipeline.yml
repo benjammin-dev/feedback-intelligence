@@ -45,10 +45,36 @@ jobs:
             "$image"
           echo "ConnectionStrings__FeedbackIntel=Server=localhost,1433;Database=FeedbackIntel;User Id=sa;Password=$password;TrustServerCertificate=True" >> "$GITHUB_ENV"
 
+      # The same pinned images as docker-compose.yml, so local runs and CI always match.
+      # Started before the build, so the analyzer loads its language model while .NET compiles.
+      - name: Start Presidio
+        run: |
+          analyzer=$(grep -oE 'mcr\.microsoft\.com/presidio-analyzer:[^[:space:]"]+' docker-compose.yml)
+          anonymizer=$(grep -oE 'mcr\.microsoft\.com/presidio-anonymizer:[^[:space:]"]+' docker-compose.yml)
+          # Gunicorn 25.1 sometimes never boots its worker when its control socket is on.
+          docker run --detach --name presidio-analyzer --publish 127.0.0.1:5002:3000 \
+            --env GUNICORN_CMD_ARGS=--no-control-socket "$analyzer"
+          docker run --detach --name presidio-anonymizer --publish 127.0.0.1:5001:3000 \
+            --env GUNICORN_CMD_ARGS=--no-control-socket "$anonymizer"
+
       # Vulnerability alerts stop CI and pull requests (NFR-SEC-04), but must not stop the daily
       # run: a new advisory for any package would otherwise freeze the dashboard until fixed.
       - name: Build
         run: dotnet build src/FeedbackIntel.Pipeline --configuration Release -p:NuGetAudit=false
+
+      # Short requests, checked every 2 seconds, so a slow start never hangs the check.
+      - name: Wait for Presidio
+        run: |
+          for attempt in $(seq 90); do
+            if curl --silent --fail --max-time 5 http://127.0.0.1:5002/health >/dev/null \
+              && curl --silent --fail --max-time 5 http://127.0.0.1:5001/health >/dev/null; then
+              echo "Presidio ready after about $((attempt * 2)) seconds"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::Presidio didn't become ready within 3 minutes."
+          exit 1
 
       - name: Run pipeline
         timeout-minutes: 40

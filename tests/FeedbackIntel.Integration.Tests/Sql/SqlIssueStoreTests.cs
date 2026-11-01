@@ -57,6 +57,24 @@ public class SqlIssueStoreTests
     }
 
     [Fact]
+    public async Task ReadRawIssuesAsync_ReturnsWhatWasInserted()
+    {
+        var settings = await SqlServerTestDatabase.CreateMigratedAsync();
+        var store = new SqlIssueStore(settings);
+        var repository = await store.EnsureRepositoryAsync("microsoft", "winget-cli", Created, CancellationToken.None);
+        var issue = Issue(repository.Id, 7);
+        await store.InsertRawIssuesAsync([issue], CancellationToken.None);
+
+        var read = Assert.Single(await store.ReadRawIssuesAsync(CancellationToken.None));
+
+        Assert.Equal(issue.Title, read.Title);
+        Assert.Equal<string>(["Issue-Bug", "Area-CLI"], read.Labels);
+        Assert.Equal(issue.CreatedAt, read.CreatedAt);
+        Assert.Equal(DateTimeKind.Utc, read.CreatedAt.Kind);
+        Assert.Null(read.ClosedAt);
+    }
+
+    [Fact]
     public async Task ClearRawIssuesAsync_RemovesAllRows()
     {
         var settings = await SqlServerTestDatabase.CreateMigratedAsync();

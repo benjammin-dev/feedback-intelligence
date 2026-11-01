@@ -142,5 +142,8 @@ public class IngestIssuesStepTests
             Inserted.AddRange(issues);
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyList<RawIssue>> ReadRawIssuesAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<RawIssue>>(Inserted);
     }
 }
