@@ -39,7 +39,9 @@ internal static class PresidioTestServices
             AnonymizerUrl = $"http://{anonymizer.Hostname}:{anonymizer.GetMappedPublicPort(ContainerPort)}",
         };
 
-        await Task.WhenAll(WaitUntilHealthyAsync(options.AnalyzerUrl), WaitUntilHealthyAsync(options.AnonymizerUrl));
+        await Task.WhenAll(
+            WaitUntilHealthyAsync(analyzer, options.AnalyzerUrl),
+            WaitUntilHealthyAsync(anonymizer, options.AnonymizerUrl));
         return options;
     }
 
@@ -52,12 +54,15 @@ internal static class PresidioTestServices
     /// Polls the health endpoint with short requests until it answers. Testcontainers'
     /// built-in HTTP wait sends one request with a 100-second timeout and gives up if it
     /// hangs, which happens while the analyzer is still loading on a slow runner.
+    /// If it never answers, the error includes the container's state, the last probe
+    /// result, and the end of its logs, so a CI failure explains itself.
     /// </summary>
-    private static async Task WaitUntilHealthyAsync(string baseUrl)
+    private static async Task WaitUntilHealthyAsync(IContainer container, string baseUrl)
     {
         using var probe = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
         var healthUrl = new Uri(new Uri(baseUrl), "health");
         var deadline = DateTime.UtcNow + StartupTimeout;
+        var lastResult = "no response yet";
 
         while (true)
         {
@@ -68,22 +73,33 @@ internal static class PresidioTestServices
                 {
                     return;
                 }
+
+                lastResult = $"HTTP {(int)response.StatusCode}";
             }
-            catch (HttpRequestException)
+            catch (HttpRequestException ex)
             {
-                // Not listening yet.
+                lastResult = $"{ex.GetType().Name}: {ex.Message}";
             }
             catch (TaskCanceledException)
             {
-                // Listening but not answering yet.
+                lastResult = "request timed out after 5 seconds";
             }
 
             if (DateTime.UtcNow > deadline)
             {
-                throw new TimeoutException($"Presidio at {baseUrl} wasn't healthy within {StartupTimeout.TotalMinutes} minutes.");
+                var (stdout, stderr) = await container.GetLogsAsync(timestampsEnabled: false);
+                throw new TimeoutException(
+                    $"Presidio ({container.Image.FullName}) at {baseUrl} wasn't healthy within " +
+                    $"{StartupTimeout.TotalMinutes} minutes. Container state: {container.State}. " +
+                    $"Last probe: {lastResult}.{Environment.NewLine}" +
+                    $"--- stdout (end) ---{Environment.NewLine}{Tail(stdout)}{Environment.NewLine}" +
+                    $"--- stderr (end) ---{Environment.NewLine}{Tail(stderr)}");
             }
 
             await Task.Delay(TimeSpan.FromSeconds(2));
         }
     }
+
+    private static string Tail(string text, int maxLength = 3000) =>
+        text.Length <= maxLength ? text : text[^maxLength..];
 }

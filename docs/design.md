@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.1 |
-| **Date** | 2026-10-24 |
+| **Version** | 1.2 |
+| **Date** | 2026-10-31 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Project plan](project-plan.md), [Requirements](requirements.md), [Data dictionary](data-dictionary.md), [Decision records](adr/README.md) |
 
@@ -118,6 +118,8 @@ All tunable behavior lives in `config/pipeline.json`, validated against `config/
   "Text":           { "BodyMaxCharacters": 4000, "SummaryMinBodyCharacters": 500 },
   "Insights":       { "TopicMinIssues": 3, "TopicWindowDays": 7, "DigestMaxWords": 300 },
   "Operations":     { "StaleDataAlertHours": 48, "SqlStartupWaitSeconds": 120 },
+  "Privacy":        { "AnalyzerUrl": "http://localhost:5002", "AnonymizerUrl": "http://localhost:5001",
+                      "ScoreThreshold": 0.5 },
   "Publishing":     { "OutputDirectory": "out/site", "HistoryDirectory": "out/history" }
 }
 ```
@@ -219,5 +221,6 @@ The `data` branch holds only history files and is written only by the pipeline w
 
 | Version | Date | Change |
 |---|---|---|
+| 1.2 | 2026-10-31 | Added the `Privacy` section to the configuration sample. |
 | 1.1 | 2026-10-24 | Recorded results of the M2 open items. |
 | 1.0 | 2026-10-18 | Initial design approved |

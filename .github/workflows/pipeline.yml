@@ -37,21 +37,29 @@ jobs:
         run: |
           password="Fi-$(openssl rand -hex 16)"
           echo "::add-mask::$password"
+          # The same pinned image as docker-compose.yml, so local runs and CI always match.
+          image=$(grep -oE 'mcr\.microsoft\.com/mssql/server:[^[:space:]"]+' docker-compose.yml)
           docker run --detach --name sqlserver \
             --env ACCEPT_EULA=Y --env MSSQL_PID=Express --env "MSSQL_SA_PASSWORD=$password" \
             --publish 127.0.0.1:1433:1433 \
-            mcr.microsoft.com/mssql/server:2022-latest
+            "$image"
           echo "ConnectionStrings__FeedbackIntel=Server=localhost,1433;Database=FeedbackIntel;User Id=sa;Password=$password;TrustServerCertificate=True" >> "$GITHUB_ENV"
+
       # The same pinned images as docker-compose.yml, so local runs and CI always match.
+      # Started before the build, so the analyzer loads its language model while .NET compiles.
       - name: Start Presidio
         run: |
           analyzer=$(grep -oE 'mcr\.microsoft\.com/presidio-analyzer:[^[:space:]"]+' docker-compose.yml)
           anonymizer=$(grep -oE 'mcr\.microsoft\.com/presidio-anonymizer:[^[:space:]"]+' docker-compose.yml)
           docker run --detach --name presidio-analyzer --publish 127.0.0.1:5002:3000 "$analyzer"
           docker run --detach --name presidio-anonymizer --publish 127.0.0.1:5001:3000 "$anonymizer"
+
+      # Vulnerability alerts stop CI and pull requests (NFR-SEC-04), but must not stop the daily
+      # run: a new advisory for any package would otherwise freeze the dashboard until fixed.
       - name: Build
-        run: dotnet build src/FeedbackIntel.Pipeline --configuration Release
-      # The analyzer loads a language model at startup. Short requests, checked every 2 seconds.
+        run: dotnet build src/FeedbackIntel.Pipeline --configuration Release -p:NuGetAudit=false
+
+      # Short requests, checked every 2 seconds, so a slow start never hangs the check.
       - name: Wait for Presidio
         run: |
           for attempt in $(seq 90); do
@@ -64,6 +72,7 @@ jobs:
           done
           echo "::error::Presidio didn't become ready within 3 minutes."
           exit 1
+
       - name: Run pipeline
         timeout-minutes: 40
         env:
