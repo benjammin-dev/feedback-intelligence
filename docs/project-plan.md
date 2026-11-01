@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.3 |
-| **Date** | 2026-10-24 |
+| **Version** | 1.4 |
+| **Date** | 2026-10-31 |
 | **Owner** | Benjamin Rose |
 
 ---
@@ -147,7 +147,7 @@ Estimates assume about 5 hours per week, with code drafted by an AI assistant an
 | **M0: Plan and design** | Project plan, requirements, design docs, ADRs | 1 | 6 days (Oct 13–18) | A well-documented project plan |
 | **M1: Foundation** | Dev environment (WSL, Docker), repository, standards, PR template, CI that builds and runs tests | 1 | 3 days (Oct 18–20) | A professionally set-up repository |
 | **M2: Walking skeleton** | winget-cli issues → SQL Server in Actions → one number on GitHub Pages, all automated | 1 | 5 days (Oct 20–24) | A working end-to-end pipeline, however small |
-| **M3: Core data pipeline and privacy** | Incremental ingest, Presidio redaction and PII tests, raw → cleaned → reporting T-SQL, quality checks, alert issues, basic dashboard (overview, trends, issue explorer) | 2 | — | A complete, privacy-safe data engineering project |
+| **M3: Core data pipeline and privacy** | Incremental ingest, Presidio redaction and PII tests, raw → cleaned → reporting T-SQL, quality checks, alert issues, config validation in CI, test strategy document, basic dashboard (overview, trends, issue explorer) | 2 | — | A complete, privacy-safe data engineering project |
 | **M4: AI enrichment** | AI classification and summaries, caching, evaluation set with CI gate | 1–2 | — | An AI-integrated system with responsible-AI practices |
 | **M5: Insights** | Emerging topics, weekly digest, pipeline health page | 1 | — | The full product vision for one repository |
 | **M6: Scale out** | Onboard PowerToys, then VS Code with batching | 1 | — | A system that scales across products |
@@ -155,6 +155,8 @@ Estimates assume about 5 hours per week, with code drafted by an AI assistant an
 | **M8: Could-haves** *(optional)* | CSV export, Power BI Desktop report, local Spark partitioning prototype | Not estimated | — | Extended into Power Platform and Spark |
 
 **Total for M0–M7: roughly 9–10 weeks.** Building finishes sooner; the remaining time covers review and lets the pipeline accumulate real operating history. M8 starts only after M0–M7 are complete.
+
+M2's daily schedule (FR-OPS-01) counts as done only once a scheduled run, not just a manual one, has succeeded; the Pipeline workflow's run history shows this.
 
 Personal information is redacted from M3 onward, before any issue text is published. From M2, usernames are never stored and raw text is never committed.
 
@@ -196,6 +198,7 @@ Personal information is redacted from M3 onward, before any issue text is publis
 
 | Version | Date | Change |
 |---|---|---|
+| 1.4 | 2026-10-31 | Added config validation in CI (FR-CFG-02) and the test strategy document to M3; noted that M2 needs a successful scheduled run. |
 | 1.3 | 2026-10-24 | Recorded actual time for M0–M2 and results for validated assumptions (A2, A3, A4, A9). A8 now applies before issue titles are published, since the M2 dashboard shows only counts. |
 | 1.2 | 2026-10-19 | Updated the runtime constraint from .NET 8 to .NET 10, because .NET 8 support ends in November 2026 (ADR 0014). |
 | 1.1 | 2026-10-14 | Moved PII redaction from M4 to M3 so no issue text is published unredacted; renamed M3 and M4; added optional M8 for Could-have requirements. See [requirements](requirements.md). |

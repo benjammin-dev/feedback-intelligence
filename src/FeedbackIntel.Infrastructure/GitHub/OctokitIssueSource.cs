@@ -27,12 +27,18 @@ public sealed class OctokitIssueSource(IGitHubClient client, IClock clock) : IIs
         var issues = await client.Issue.GetAllForRepository(repository.Owner, repository.Name, request, AllPages);
         var fetchedAt = clock.UtcNow;
 
-        // GitHub's issues endpoint also returns pull requests (FR-ING-03).
-        return issues
-            .Where(issue => issue.PullRequest is null)
-            .Select(issue => ToRawIssue(issue, repository.Id, fetchedAt))
-            .ToList();
+        return ToRawIssues(issues, repository.Id, fetchedAt);
     }
+
+    /// <summary>
+    /// Drops pull requests, which GitHub's issues endpoint also returns (FR-ING-03), and
+    /// converts the rest. Separate from the API call so tests can check it directly.
+    /// </summary>
+    internal static List<RawIssue> ToRawIssues(IEnumerable<Issue> issues, short repoId, DateTime fetchedAt) =>
+        issues
+            .Where(issue => issue.PullRequest is null)
+            .Select(issue => ToRawIssue(issue, repoId, fetchedAt))
+            .ToList();
 
     /// <summary>
     /// Copies only the fields the pipeline uses. <c>issue.User</c> and other people fields

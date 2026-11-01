@@ -47,8 +47,10 @@ jobs:
           --collect:"XPlat Code Coverage"
           --results-directory TestResults
 
+      # Runs even if a test failed, but only when coverage data exists. Otherwise an earlier
+      # failure would also show up here as a confusing "no report files" error.
       - name: Coverage summary
-        if: always()
+        if: always() && hashFiles('TestResults/**/coverage.cobertura.xml') != ''
         run: |
           dotnet tool install --global dotnet-reportgenerator-globaltool
           reportgenerator \
@@ -56,7 +58,7 @@ jobs:
             -targetdir:coverage \
             "-reporttypes:MarkdownSummaryGithub;JsonSummary"
           cat coverage/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
-        
+
       - name: Enforce coverage minimum (NFR-MNT-01)
         run: |
           coverage=$(jq '.summary.linecoverage' coverage/Summary.json)

@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.2 |
-| **Date** | 2026-10-24 |
+| **Version** | 1.3 |
+| **Date** | 2026-10-31 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Requirements](requirements.md), [ADR 0009: data layers](adr/0009-raw-cleaned-reporting-layers.md), [ADR 0013: bodies excluded from history](adr/0013-exclude-bodies-from-history.md) |
 
@@ -299,7 +299,7 @@ A single row of facts about the current data, published as a tiny file the dashb
 
 | Column | Type | What it does and why |
 |---|---|---|
-| `data_updated_at` | `datetime2(0)` | When the last successful run finished. Shown on every page (FR-DSH-05). |
+| `data_updated_at` | `datetime2(0)` | The moment the data reflects: the start of the run that produced it. Every number in one run is measured against this same moment. Shown on every page (FR-DSH-05). |
 | `last_run_id` | `bigint` | The run that produced the data. |
 | `repositories` | `nvarchar(1000)` | The tracked repositories, as a JSON list. Fills the repository filter. |
 | `ai_model` | `varchar(100)` | The AI model in use. Shown alongside AI-generated labels for transparency (FR-DSH-06). This and the next three columns are empty until AI enrichment exists (M4). |
@@ -364,6 +364,7 @@ The two small JSON files let the dashboard show the Overview page immediately wh
 
 | Version | Date | Change |
 |---|---|---|
+| 1.3 | 2026-10-31 | Clarified that `reporting.site_info.data_updated_at` is the run's start time. |
 | 1.2 | 2026-10-24 | Noted which `reporting.overview` and `reporting.site_info` columns are empty until AI enrichment exists, and that the median is empty when nothing closed. |
 | 1.1 | 2026-10-18 | Added `ops.run.issues_rejected`; categories and severities now come from configuration (see design). |
 | 1.0 | 2026-10-14 | Added reporting layer, `cleaned.weekly_digest`, and data contract. Excluded bodies from history (ADR 0013). Corrected body cap to 4,000 characters (`nvarchar(8000)` is not a valid SQL Server type). |
