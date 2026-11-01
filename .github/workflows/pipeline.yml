@@ -37,14 +37,18 @@ jobs:
         run: |
           password="Fi-$(openssl rand -hex 16)"
           echo "::add-mask::$password"
+          # The same pinned image as docker-compose.yml, so local runs and CI always match.
+          image=$(grep -oE 'mcr\.microsoft\.com/mssql/server:[^[:space:]"]+' docker-compose.yml)
           docker run --detach --name sqlserver \
             --env ACCEPT_EULA=Y --env MSSQL_PID=Express --env "MSSQL_SA_PASSWORD=$password" \
             --publish 127.0.0.1:1433:1433 \
-            mcr.microsoft.com/mssql/server:2022-latest
+            "$image"
           echo "ConnectionStrings__FeedbackIntel=Server=localhost,1433;Database=FeedbackIntel;User Id=sa;Password=$password;TrustServerCertificate=True" >> "$GITHUB_ENV"
 
+      # Vulnerability alerts stop CI and pull requests (NFR-SEC-04), but must not stop the daily
+      # run: a new advisory for any package would otherwise freeze the dashboard until fixed.
       - name: Build
-        run: dotnet build src/FeedbackIntel.Pipeline --configuration Release
+        run: dotnet build src/FeedbackIntel.Pipeline --configuration Release -p:NuGetAudit=false
 
       - name: Run pipeline
         timeout-minutes: 40

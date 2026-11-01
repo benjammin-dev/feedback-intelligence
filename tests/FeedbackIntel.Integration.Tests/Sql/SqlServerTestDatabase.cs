@@ -14,7 +14,7 @@ namespace FeedbackIntel.Integration.Tests.Sql;
 /// </summary>
 internal static class SqlServerTestDatabase
 {
-    private const string Image = "mcr.microsoft.com/mssql/server:2022-latest";
+    private const string Image = "mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04@sha256:4402d880dd4c34bfa7d8705e56a86cd6c88da80a1f6bbbe741f999e76264a090";
 
     private static readonly Lazy<Task<MsSqlContainer>> Container = new(StartContainerAsync);
 

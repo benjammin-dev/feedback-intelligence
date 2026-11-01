@@ -21,4 +21,7 @@
   <ItemGroup>
     <EmbeddedResource Include="../../database/migrations/*.sql" LogicalName="Migrations.%(Filename)%(Extension)" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="FeedbackIntel.Integration.Tests" />
+  </ItemGroup>
 </Project>

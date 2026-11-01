@@ -491,3 +491,6 @@ out/
 coverage/
 # Dashboard dependencies
 node_modules/
+
+# Windows download markers copied in from Windows folders
+*:Zone.Identifier
