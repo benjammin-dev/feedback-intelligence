@@ -12,7 +12,13 @@ public class IngestIssuesStepTests
 
     private readonly FakeIssueSource _source = new();
     private readonly FakeIssueStore _store = new();
-    private readonly IngestionOptions _options = new() { InitialHistoryDays = 90, MaxRejectedPercent = 10 };
+    private readonly FakeWatermarkStore _watermarks = new();
+    private readonly IngestionOptions _options = new()
+    {
+        InitialHistoryDays = 90,
+        MaxRejectedPercent = 10,
+        MinIssuesForRejectionCheck = 20,
+    };
 
     [Fact]
     public async Task ExecuteAsync_FetchesEnabledRepositoriesFromHistoryWindow()
@@ -56,21 +62,21 @@ public class IngestIssuesStepTests
     [Fact]
     public async Task ExecuteAsync_RejectedExactlyAtLimit_Succeeds()
     {
-        _source.Issues = [.. Enumerable.Range(1, 9).Select(n => TestIssues.Valid(n)), TestIssues.Valid(10) with { Title = "" }];
+        _source.Issues = [.. Valid(1, 18), .. Invalid(19, 2)];
 
         var run = await RunAsync();
 
-        Assert.Equal(1, run.IssuesRejected);
+        Assert.Equal(2, run.IssuesRejected);
     }
 
     [Fact]
     public async Task ExecuteAsync_RejectedAboveLimit_Throws()
     {
-        _source.Issues = [.. Enumerable.Range(1, 8).Select(n => TestIssues.Valid(n)), .. Enumerable.Range(9, 2).Select(n => TestIssues.Valid(n) with { Title = "" })];
+        _source.Issues = [.. Valid(1, 17), .. Invalid(18, 3)];
 
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => RunAsync());
 
-        Assert.Contains("2 of 10", error.Message);
+        Assert.Contains("3 of 20", error.Message);
     }
 
     [Fact]
@@ -96,10 +102,58 @@ public class IngestIssuesStepTests
         Assert.Empty(_store.Inserted);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_SmallRunWithRejections_IsNotJudgedByPercentage()
+    {
+        _source.Issues = [.. Valid(1, 4), .. Invalid(5, 1)];
+
+        var run = await RunAsync();
+
+        Assert.Equal(5, run.IssuesFetched);
+        Assert.Equal(1, run.IssuesRejected);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_RepositoryWithWatermark_FetchesSinceWatermark()
+    {
+        var mark = Now.AddHours(-26);
+        _watermarks.Marks[1] = mark;
+
+        await RunAsync();
+
+        Assert.Equal(mark, Assert.Single(_source.Calls).Since);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WatermarkForOtherRepository_UsesHistoryWindow()
+    {
+        _watermarks.Marks[2] = Now.AddHours(-26);
+
+        await RunAsync();
+
+        Assert.Equal(Now.AddDays(-90), Assert.Single(_source.Calls).Since);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_NeverMovesWatermarks()
+    {
+        _source.Issues = [.. Valid(1, 3)];
+
+        await RunAsync();
+
+        Assert.Equal(0, _watermarks.AdvanceCalls);
+    }
+
+    private static IEnumerable<RawIssue> Valid(int first, int count) =>
+        Enumerable.Range(first, count).Select(n => TestIssues.Valid(n));
+
+    private static IEnumerable<RawIssue> Invalid(int first, int count) =>
+        Enumerable.Range(first, count).Select(n => TestIssues.Valid(n) with { Title = "" });
+
     private async Task<RunRecord> RunAsync(List<RepositoryOptions>? repositories = null)
     {
         repositories ??= [new() { Owner = "microsoft", Name = "winget-cli" }];
-        var step = new IngestIssuesStep(repositories, _options, _source, _store, new FakeClock(Now));
+        var step = new IngestIssuesStep(repositories, _options, _source, _store, _watermarks, new FakeClock(Now));
         var context = new RunContext(new RunRecord { RunId = 1, Trigger = "manual", StartedAt = Now });
 
         await step.ExecuteAsync(context, CancellationToken.None);
@@ -145,5 +199,21 @@ public class IngestIssuesStepTests
 
         public Task<IReadOnlyList<RawIssue>> ReadRawIssuesAsync(CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<RawIssue>>(Inserted);
+    }
+
+    private sealed class FakeWatermarkStore : IWatermarkStore
+    {
+        public Dictionary<short, DateTime> Marks { get; } = [];
+
+        public int AdvanceCalls { get; private set; }
+
+        public Task<IReadOnlyDictionary<short, DateTime>> GetAllAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyDictionary<short, DateTime>>(Marks);
+
+        public Task AdvanceAsync(long runId, CancellationToken cancellationToken)
+        {
+            AdvanceCalls++;
+            return Task.CompletedTask;
+        }
     }
 }

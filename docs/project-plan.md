@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.4 |
-| **Date** | 2026-10-31 |
+| **Version** | 1.5 |
+| **Date** | 2026-11-01 |
 | **Owner** | Benjamin Rose |
 
 ---
@@ -156,7 +156,7 @@ Estimates assume about 5 hours per week, with code drafted by an AI assistant an
 
 **Total for M0–M7: roughly 9–10 weeks.** Building finishes sooner; the remaining time covers review and lets the pipeline accumulate real operating history. M8 starts only after M0–M7 are complete.
 
-M2's daily schedule (FR-OPS-01) counts as done only once a scheduled run, not just a manual one, has succeeded; the Pipeline workflow's run history shows this.
+M2's daily schedule (FR-OPS-01) counted as done only once a scheduled run, not just a manual one, had succeeded. The first scheduled run succeeded on 2026-10-26, followed by daily successes through 2026-11-01, so M2 is complete.
 
 Personal information is redacted from M3 onward, before any issue text is published. From M2, usernames are never stored and raw text is never committed.
 
@@ -198,6 +198,7 @@ Personal information is redacted from M3 onward, before any issue text is publis
 
 | Version | Date | Change |
 |---|---|---|
+| 1.5 | 2026-11-01 | Recorded that M2's daily schedule was confirmed by scheduled runs from 2026-10-26. |
 | 1.4 | 2026-10-31 | Added config validation in CI (FR-CFG-02) and the test strategy document to M3; noted that M2 needs a successful scheduled run. |
 | 1.3 | 2026-10-24 | Recorded actual time for M0–M2 and results for validated assumptions (A2, A3, A4, A9). A8 now applies before issue titles are published, since the M2 dashboard shows only counts. |
 | 1.2 | 2026-10-19 | Updated the runtime constraint from .NET 8 to .NET 10, because .NET 8 support ends in November 2026 (ADR 0014). |

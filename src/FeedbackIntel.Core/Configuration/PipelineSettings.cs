@@ -52,6 +52,11 @@ public sealed class PipelineSettings
             problems.Add("Ingestion:MaxRejectedPercent must be between 0 and 100.");
         }
 
+        if (Ingestion.MinIssuesForRejectionCheck < 1)
+        {
+            problems.Add("Ingestion:MinIssuesForRejectionCheck must be at least 1.");
+        }
+
         if (Operations.SqlStartupWaitSeconds is < 1 or > 600)
         {
             problems.Add("Operations:SqlStartupWaitSeconds must be between 1 and 600.");

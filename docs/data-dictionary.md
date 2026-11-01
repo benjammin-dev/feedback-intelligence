@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.3 |
-| **Date** | 2026-10-31 |
+| **Version** | 1.4 |
+| **Date** | 2026-11-01 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Requirements](requirements.md), [ADR 0009: data layers](adr/0009-raw-cleaned-reporting-layers.md), [ADR 0013: bodies excluded from history](adr/0013-exclude-bodies-from-history.md) |
 
@@ -167,7 +167,7 @@ How far ingestion has reached for each repository. It's what makes loading incre
 | Column | Type | What it does and why |
 |---|---|---|
 | `repo_id` | `smallint` | **Primary key.** One watermark per repository. |
-| `last_updated_at` | `datetime2(0)` | The latest issue `updated_at` from the last fully successful run. The next run fetches only issues updated after this time (FR-ING-02). |
+| `last_updated_at` | `datetime2(0)` | The latest issue `updated_at` from the last fully successful run. The next run fetches issues updated at or after this time (FR-ING-02); re-fetching one at exactly this time is harmless because issues are upserted. |
 | `last_success_run_id` | `bigint` | Which run set the watermark. Makes it easy to check where ingestion resumed. |
 
 **Key rule:** the watermark only moves forward when a run fully succeeds. If a run fails halfway, the next run starts from the old watermark and fetches the missed issues again. Duplicates can't happen, because issues are upserted (FR-DAT-03).
@@ -364,6 +364,7 @@ The two small JSON files let the dashboard show the Overview page immediately wh
 
 | Version | Date | Change |
 |---|---|---|
+| 1.4 | 2026-11-01 | Clarified that ingestion resumes at, not after, the watermark. |
 | 1.3 | 2026-10-31 | Clarified that `reporting.site_info.data_updated_at` is the run's start time. |
 | 1.2 | 2026-10-24 | Noted which `reporting.overview` and `reporting.site_info` columns are empty until AI enrichment exists, and that the median is empty when nothing closed. |
 | 1.1 | 2026-10-18 | Added `ops.run.issues_rejected`; categories and severities now come from configuration (see design). |

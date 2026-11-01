@@ -61,6 +61,7 @@ internal static class PipelineServices
         services.AddSingleton<IRunStore, SqlRunStore>();
         services.AddSingleton<IIssueSource, OctokitIssueSource>();
         services.AddSingleton<IIssueStore, SqlIssueStore>();
+        services.AddSingleton<IWatermarkStore, SqlWatermarkStore>();
         services.AddSingleton<IPiiRedactor>(provider => new PresidioRedactor(
             new HttpClient { Timeout = TimeSpan.FromMinutes(2) },
             provider.GetRequiredService<PrivacyOptions>()));
@@ -74,6 +75,7 @@ internal static class PipelineServices
         services.AddSingleton<RedactIssuesStep>();      // 4
         services.AddSingleton<RebuildReportingStep>();  // 6
         services.AddSingleton<PublishStep>();           // 9
+        services.AddSingleton<AdvanceWatermarksStep>(); // 10: only after everything else succeeded
 
         services.AddSingleton(provider =>
         {
@@ -85,6 +87,7 @@ internal static class PipelineServices
                 provider.GetRequiredService<RedactIssuesStep>(),
                 provider.GetRequiredService<RebuildReportingStep>(),
                 provider.GetRequiredService<PublishStep>(),
+                provider.GetRequiredService<AdvanceWatermarksStep>(),
             ];
 
             return new PipelineOrchestrator(
