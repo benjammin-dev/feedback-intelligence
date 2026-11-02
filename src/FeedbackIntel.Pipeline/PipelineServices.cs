@@ -91,6 +91,7 @@ internal static class PipelineServices
         services.AddSingleton<RestoreHistoryStep>();    // 2
         services.AddSingleton<FreshnessCheckStep>();    // after restore, so earlier runs are known
         services.AddSingleton<IngestIssuesStep>();      // 3
+        services.AddSingleton<PrivacyCheckStep>();      // before 4: the known PII test set against live Presidio
         services.AddSingleton<RedactIssuesStep>();      // 4
         services.AddSingleton<RebuildReportingStep>();  // 6
         services.AddSingleton<QualityChecksStep>();     // 8: nothing is published unless these pass
@@ -107,6 +108,7 @@ internal static class PipelineServices
                 provider.GetRequiredService<RestoreHistoryStep>(),
                 provider.GetRequiredService<FreshnessCheckStep>(),
                 provider.GetRequiredService<IngestIssuesStep>(),
+                provider.GetRequiredService<PrivacyCheckStep>(),
                 provider.GetRequiredService<RedactIssuesStep>(),
                 provider.GetRequiredService<RebuildReportingStep>(),
                 provider.GetRequiredService<QualityChecksStep>(),

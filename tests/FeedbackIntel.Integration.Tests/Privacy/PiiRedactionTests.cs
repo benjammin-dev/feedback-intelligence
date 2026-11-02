@@ -1,28 +1,27 @@
+using FeedbackIntel.Core.Privacy;
+
 namespace FeedbackIntel.Integration.Tests.Privacy;
 
 /// <summary>
-/// The PII test set (FR-PRV-04): text with known personal information must come back
-/// without it, and ordinary issue text must come back unchanged. Runs in CI on every
+/// The PII test set (FR-PRV-04, <see cref="PiiTestSet"/>): text with known personal information
+/// must come back without it, and ordinary issue text must come back unchanged. Runs in CI on every
 /// pull request, so a change that weakens redaction can't be merged.
 /// </summary>
 public class PiiRedactionTests
 {
-    // Built at runtime so this file never contains anything that looks like a real token.
-    private static readonly string ClassicToken = "ghp_" + new string('A', 36);
-    private static readonly string FineGrainedToken = "github_pat_" + new string('B', 22) + "_" + new string('c', 59);
-
-    public static TheoryData<string, string, string> PersonalInformation => new()
+    public static TheoryData<string, string, string> PersonalInformation
     {
-        { "Please email logs to jane.doe@example.com when you can", "jane.doe@example.com", "<EMAIL_ADDRESS>" },
-        { "The proxy at 192.168.1.20 refused the connection", "192.168.1.20", "<IP_ADDRESS>" },
-        { "Listening on fe80::1ff:fe23:4567:890a failed", "fe80::1ff:fe23:4567:890a", "<IP_ADDRESS>" },
-        { $"I set GH_TOKEN={ClassicToken} and it still fails", ClassicToken, "<GITHUB_TOKEN>" },
-        { $"Token {FineGrainedToken} was rejected", FineGrainedToken, "<GITHUB_TOKEN>" },
-        { @"Log written to C:\Users\jsmith\AppData\Local\Temp\WinGet\defaultState.log", "jsmith", "<PATH_USERNAME>" },
-        { @"""path"": ""C:\\Users\\jsmith\\Downloads\\setup.exe""", "jsmith", "<PATH_USERNAME>" },
-        { "Config is in /home/jsmith/.config/app/settings.json", "jsmith", "<PATH_USERNAME>" },
-        { "Crash report saved to /Users/jsmith/Library/Logs/report.txt", "jsmith", "<PATH_USERNAME>" },
-    };
+        get
+        {
+            var data = new TheoryData<string, string, string>();
+            foreach (var sample in PiiTestSet.Samples)
+            {
+                data.Add(sample.Text, sample.Secret, sample.Placeholder);
+            }
+
+            return data;
+        }
+    }
 
     [Theory]
     [MemberData(nameof(PersonalInformation))]
