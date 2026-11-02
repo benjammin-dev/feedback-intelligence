@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.5 |
+| **Version** | 1.6 |
 | **Date** | 2026-11-01 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Project plan](project-plan.md), [Requirements](requirements.md), [Data dictionary](data-dictionary.md), [Decision records](adr/README.md) |
@@ -84,6 +84,7 @@ The **data contract** lists every field allowed in published and history files; 
 | 1 | Migrate database | Alert | Waits up to 2 minutes for SQL Server; script errors not retried |
 | 2 | Restore history | Alert, unless it is a manual **bootstrap** run | No |
 | 3 | Ingest issues | Alert; also fails if more than 10% of records are rejected, once at least 20 were fetched | Yes; waits for a rate-limit reset only if under 15 minutes |
+| — | Privacy check (before redact) | Alert if the live redaction service leaves any value of the known PII test set; nothing is redacted or published | Yes |
 | 4 | Redact | Alert; **never continues without redaction** | Yes |
 | 5 | Enrich | Not a run failure: invalid answers become `unclassified`; unprocessed issues stay `pending` | Yes; requests spaced about 4 seconds apart; every attempt counts against the daily budget |
 | 6 | Rebuild reporting | Alert | No |
@@ -182,7 +183,7 @@ A static site of plain HTML and JavaScript, with charts drawn by Chart.js and qu
 
 | Threat | Mitigation |
 |---|---|
-| Personal information in issue text reaches the AI, history, or dashboard | Presidio redaction before anything leaves the raw layer; usernames never collected; bodies never saved or published; data contract test; PII test set in CI (FR-PRV-01 to 04, ADR 0013) |
+| Personal information in issue text reaches the AI, history, or dashboard | Presidio redaction before anything leaves the raw layer; usernames never collected; bodies never saved or published; data contract test; the PII test set run end to end in CI, with every output file searched for the known values, and against the live redaction service at the start of every run (FR-PRV-01 to 04, NFR-PRIV-01, ADR 0013) |
 | **Issue text printed in public run logs** | Logs record counts, IDs, and step names only, never issue text. Run logs of a public repository are visible to anyone. |
 | **Malicious HTML or script in issue titles or AI output** (cross-site scripting) | The dashboard inserts all data as plain text, never as HTML, and the site sets a Content Security Policy that blocks inline scripts. |
 | Prompt injection through issue text | Issue text is clearly marked as data in prompts; AI output is parsed as JSON and validated against configured values; the AI has no ability to act (NFR-SEC-03, risk R4) |
@@ -240,6 +241,7 @@ The `data` branch holds only history files and is written only by the pipeline w
 
 | Version | Date | Change |
 |---|---|---|
+| 1.6 | 2026-11-01 | Added the privacy check before redaction, and described the end-to-end PII test. |
 | 1.5 | 2026-11-01 | Added *Backfills*. Config validation in CI now reads the real file with the pipeline's own settings classes and rejects unknown settings, instead of a separate JSON schema that could drift from the code. |
 | 1.4 | 2026-11-01 | Added the *Alerts* section: alerts are raised by a separate workflow job from the pipeline's step outputs. Listed the quality checks; replaced `IAlerter` with `IStaleDataReporter`, and added `ICleanedIssueStore` and `IWatermarkStore` to the interface list. |
 | 1.3 | 2026-11-01 | Added the advance-watermarks step before saving history; the rejection limit applies once at least 20 issues were fetched, so small incremental runs aren't failed by one unusual issue. |
