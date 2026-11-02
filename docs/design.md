@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.4 |
+| **Version** | 1.5 |
 | **Date** | 2026-11-01 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Project plan](project-plan.md), [Requirements](requirements.md), [Data dictionary](data-dictionary.md), [Decision records](adr/README.md) |
@@ -108,11 +108,15 @@ The pipeline doesn't write issues itself. It passes what it found to the workflo
 
 At most one alert issue, labeled `pipeline-alert`, is open at a time; later problems become comments on it. Error text passes through two filters first: SQL Server errors that can quote data values (such as truncation and conversion errors) are reduced to their error number, and the text is cut to one line of at most 500 characters. Values reach the alert script only through environment variables, so error text can't run as a command.
 
+### Backfills
+
+A manual run can take a backfill date range (FR-ING-06, US-14). Besides the normal incremental fetch, it re-fetches every issue *created* in that range, so those issues are redacted again and upserted without duplicates (FR-DAT-03), for example after a redaction or prompt improvement. Both fetches happen in one request stream: GitHub only filters by update time, and every issue created in the range was updated on or after its creation date, so fetching from the earlier of the range start and the watermark finds both sets. The watermark stays correct, because a re-fetched issue that wasn't updated since the watermark is older than it. A range may start at most 365 days ago, and the run record keeps the range in `backfill_from` and `backfill_to`.
+
 ---
 
 ## 5. Configuration
 
-All tunable behavior lives in `config/pipeline.json`, validated against `config/pipeline.schema.json` in CI and at startup (FR-CFG-01, FR-CFG-02). Any value can be overridden by an environment variable, which is how local runs redirect output away from the live site.
+All tunable behavior lives in `config/pipeline.json` (FR-CFG-01). The settings classes in Core are its schema: at startup every value is checked against its allowed range, and in CI a test reads the real file with the same code, also rejecting any setting the code doesn't know, such as a misspelled name, so a bad config change fails its pull request (FR-CFG-02). Any value can be overridden by an environment variable, which is how local runs redirect output away from the live site.
 
 ```jsonc
 {
@@ -141,6 +145,7 @@ All tunable behavior lives in `config/pipeline.json`, validated against `config/
 | Not in this file | Where it lives | Why |
 |---|---|---|
 | Schedule and timeouts | Workflow file | GitHub reads these only from workflow files |
+| Backfill date range (`Backfill:From`, `Backfill:To`) | Manual workflow inputs, passed as environment variables | It applies to a single run, not every run |
 | Tokens and passwords | Environment variables | Secrets never enter the repository (NFR-SEC-01) |
 | Database connection string | Environment variable | Differs between local, CI, and production |
 
@@ -235,6 +240,7 @@ The `data` branch holds only history files and is written only by the pipeline w
 
 | Version | Date | Change |
 |---|---|---|
+| 1.5 | 2026-11-01 | Added *Backfills*. Config validation in CI now reads the real file with the pipeline's own settings classes and rejects unknown settings, instead of a separate JSON schema that could drift from the code. |
 | 1.4 | 2026-11-01 | Added the *Alerts* section: alerts are raised by a separate workflow job from the pipeline's step outputs. Listed the quality checks; replaced `IAlerter` with `IStaleDataReporter`, and added `ICleanedIssueStore` and `IWatermarkStore` to the interface list. |
 | 1.3 | 2026-11-01 | Added the advance-watermarks step before saving history; the rejection limit applies once at least 20 issues were fetched, so small incremental runs aren't failed by one unusual issue. |
 | 1.2 | 2026-10-31 | Added the `Privacy` section to the configuration sample. |

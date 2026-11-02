@@ -20,6 +20,8 @@ public class IngestIssuesStepTests
         MinIssuesForRejectionCheck = 20,
     };
 
+    private BackfillOptions _backfill = new();
+
     [Fact]
     public async Task ExecuteAsync_FetchesEnabledRepositoriesFromHistoryWindow()
     {
@@ -144,6 +146,80 @@ public class IngestIssuesStepTests
         Assert.Equal(0, _watermarks.AdvanceCalls);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_NoBackfill_LeavesRangeEmpty()
+    {
+        var run = await RunAsync();
+
+        Assert.Null(run.BackfillFrom);
+        Assert.Null(run.BackfillTo);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_BackfillBeforeWatermark_FetchesFromRangeStartAndKeepsBothSets()
+    {
+        var mark = Now.AddHours(-26);
+        _watermarks.Marks[1] = mark;
+        _backfill = new BackfillOptions { From = "2026-08-01", To = "2026-08-31" };
+        _source.Issues =
+        [
+            Issue(1, created: new(2026, 10, 1), updated: mark.AddHours(1)),      // updated since watermark: kept
+            Issue(2, created: new(2026, 8, 1), updated: new(2026, 9, 1)),        // created on the first day: kept
+            Issue(3, created: new(2026, 8, 31, 23, 0, 0), updated: new(2026, 9, 2)), // created on the last day: kept
+            Issue(4, created: new(2026, 9, 1), updated: new(2026, 9, 3)),        // after the range, not updated since: dropped
+            Issue(5, created: new(2026, 7, 31), updated: new(2026, 8, 2)),       // before the range, not updated since: dropped
+        ];
+
+        var run = await RunAsync();
+
+        Assert.Equal(new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc), Assert.Single(_source.Calls).Since);
+        Assert.Equal<int>([1, 2, 3], _store.Inserted.Select(issue => issue.IssueNumber).Order());
+        Assert.Equal(3, run.IssuesFetched);
+        Assert.Equal(new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc), run.BackfillFrom);
+        Assert.Equal(new DateTime(2026, 8, 31, 0, 0, 0, DateTimeKind.Utc), run.BackfillTo);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_BackfillAfterWatermark_FetchesFromWatermark()
+    {
+        var mark = Now.AddDays(-3);
+        _watermarks.Marks[1] = mark;
+        _backfill = new BackfillOptions { From = "2026-10-23" };
+
+        var run = await RunAsync();
+
+        Assert.Equal(mark, Assert.Single(_source.Calls).Since);
+        Assert.Equal(new DateTime(2026, 10, 24, 0, 0, 0, DateTimeKind.Utc), run.BackfillTo);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_BackfillTooFarBack_Throws()
+    {
+        _backfill = new BackfillOptions { From = "2025-10-23", To = "2025-12-31" };
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync());
+
+        Assert.Contains("at most 365 days ago", error.Message);
+        Assert.Empty(_source.Calls);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_BackfillExactlyAtLimit_IsAllowed()
+    {
+        _backfill = new BackfillOptions { From = "2025-10-24" };
+
+        await RunAsync();
+
+        Assert.Equal(new DateTime(2025, 10, 24, 0, 0, 0, DateTimeKind.Utc), Assert.Single(_source.Calls).Since);
+    }
+
+    private static RawIssue Issue(int number, DateTime created, DateTime updated) =>
+        TestIssues.Valid(number) with
+        {
+            CreatedAt = DateTime.SpecifyKind(created, DateTimeKind.Utc),
+            UpdatedAt = DateTime.SpecifyKind(updated, DateTimeKind.Utc),
+        };
+
     private static IEnumerable<RawIssue> Valid(int first, int count) =>
         Enumerable.Range(first, count).Select(n => TestIssues.Valid(n));
 
@@ -153,7 +229,7 @@ public class IngestIssuesStepTests
     private async Task<RunRecord> RunAsync(List<RepositoryOptions>? repositories = null)
     {
         repositories ??= [new() { Owner = "microsoft", Name = "winget-cli" }];
-        var step = new IngestIssuesStep(repositories, _options, _source, _store, _watermarks, new FakeClock(Now));
+        var step = new IngestIssuesStep(repositories, _options, _backfill, _source, _store, _watermarks, new FakeClock(Now));
         var context = new RunContext(new RunRecord { RunId = 1, Trigger = "manual", StartedAt = Now });
 
         await step.ExecuteAsync(context, CancellationToken.None);

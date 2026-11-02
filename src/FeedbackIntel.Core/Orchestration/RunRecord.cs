@@ -12,6 +12,12 @@ public sealed class RunRecord
     /// <summary><c>schedule</c> or <c>manual</c>.</summary>
     public required string Trigger { get; init; }
 
+    /// <summary>The first creation date a backfill re-fetched, or null for a normal run.</summary>
+    public DateTime? BackfillFrom { get; set; }
+
+    /// <summary>The last creation date a backfill re-fetched (included), or null for a normal run.</summary>
+    public DateTime? BackfillTo { get; set; }
+
     /// <summary>When the run began (UTC).</summary>
     public required DateTime StartedAt { get; init; }
 
@@ -56,6 +62,8 @@ public sealed class RunRecord
     {
         RunId = RunId,
         Trigger = Trigger,
+        BackfillFrom = BackfillFrom,
+        BackfillTo = BackfillTo,
         StartedAt = StartedAt,
         FinishedAt = finishedAt,
         Status = RunStatus.Succeeded,

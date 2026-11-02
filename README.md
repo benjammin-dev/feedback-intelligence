@@ -74,6 +74,8 @@ export GITHUB_TOKEN=$(gh auth token)   # optional; without it GitHub allows 60 r
 dotnet run --project src/FeedbackIntel.Pipeline
 ```
 
+To backfill, set a creation-date range for one run, for example `export Backfill__From=2026-08-01 Backfill__To=2026-08-31` (on GitHub, use the *Run workflow* inputs instead). Unset both afterwards.
+
 The very first run on an empty local database has no history to restore, so start it with `export Operations__Bootstrap=true`. After that, the local database keeps its data and the variable isn't needed. Each run also writes history files to `out/history`.
 
 Settings live in [`config/pipeline.json`](config/pipeline.json). Any value can be overridden with an environment variable, such as `Publishing__OutputDirectory`. Secrets only ever come from environment variables.

@@ -25,10 +25,10 @@ public sealed class SqlRunStore(DatabaseSettings settings) : IRunStore
             failed_step = @FailedStep,
             error_message = @ErrorMessage
         WHEN NOT MATCHED THEN INSERT
-            (run_id, [trigger], started_at, finished_at, status, issues_fetched, issues_rejected,
+            (run_id, [trigger], backfill_from, backfill_to, started_at, finished_at, status, issues_fetched, issues_rejected,
              issues_redacted, ai_requests, ai_cache_hits, issues_unclassified, failed_step, error_message)
         VALUES
-            (@RunId, @Trigger, @StartedAt, @FinishedAt, @Status, @IssuesFetched, @IssuesRejected,
+            (@RunId, @Trigger, @BackfillFrom, @BackfillTo, @StartedAt, @FinishedAt, @Status, @IssuesFetched, @IssuesRejected,
              @IssuesRedacted, @AiRequests, @AiCacheHits, @IssuesUnclassified, @FailedStep, @ErrorMessage);
         """;
 
@@ -39,6 +39,8 @@ public sealed class SqlRunStore(DatabaseSettings settings) : IRunStore
         {
             run.RunId,
             run.Trigger,
+            run.BackfillFrom,
+            run.BackfillTo,
             run.StartedAt,
             run.FinishedAt,
             Status = ToDatabaseValue(run.Status),

@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.6 |
+| **Version** | 1.7 |
 | **Date** | 2026-11-01 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Requirements](requirements.md), [ADR 0009: data layers](adr/0009-raw-cleaned-reporting-layers.md), [ADR 0013: bodies excluded from history](adr/0013-exclude-bodies-from-history.md) |
@@ -146,8 +146,8 @@ One row per pipeline run. It's the system's logbook: it feeds the pipeline healt
 |---|---|---|
 | `run_id` | `bigint` | **Primary key.** The GitHub Actions run ID, so every row links directly to that run's logs. |
 | `trigger` | `varchar(10)` | `schedule` or `manual`. Distinguishes automatic daily runs from ones started by hand. |
-| `backfill_from` | `datetime2(0)` | Start of a backfill date range, empty for normal runs. Records what a backfill covered (US-14). |
-| `backfill_to` | `datetime2(0)` | End of the backfill date range, empty for normal runs. |
+| `backfill_from` | `datetime2(0)` | First issue creation date a backfill re-fetched (midnight UTC), empty for normal runs. Records what a backfill covered (US-14). |
+| `backfill_to` | `datetime2(0)` | Last creation date the backfill re-fetched (midnight UTC; the whole day is included), empty for normal runs. |
 | `started_at` | `datetime2(0)` | When the run began. With `finished_at`, gives run duration (NFR-PERF-03). |
 | `finished_at` | `datetime2(0)` | When the run ended, empty while running. |
 | `status` | `varchar(10)` | `running`, `succeeded`, or `failed`. The headline for the health page and the success-rate target (NFR-REL-01). |
@@ -364,6 +364,7 @@ The two small JSON files let the dashboard show the Overview page immediately wh
 
 | Version | Date | Change |
 |---|---|---|
+| 1.7 | 2026-11-01 | Clarified that the backfill range is by issue creation date, with both days included. |
 | 1.6 | 2026-11-01 | `ops.run.error_message` keeps only the error number for SQL Server errors that can quote data values. |
 | 1.5 | 2026-11-01 | Noted which weeks `reporting.weekly_metrics` covers and how `week_start` is published. The automated data contract test now reads section 7 directly. |
 | 1.4 | 2026-11-01 | Clarified that ingestion resumes at, not after, the watermark. |

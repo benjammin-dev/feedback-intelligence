@@ -58,6 +58,7 @@ internal static class PipelineServices
         services.AddSingleton(settings.Privacy);
         services.AddSingleton(settings.Text);
         services.AddSingleton(settings.Operations);
+        services.AddSingleton(settings.Backfill);
         services.AddSingleton(new DatabaseSettings(
             connectionString, TimeSpan.FromSeconds(settings.Operations.SqlStartupWaitSeconds)));
 

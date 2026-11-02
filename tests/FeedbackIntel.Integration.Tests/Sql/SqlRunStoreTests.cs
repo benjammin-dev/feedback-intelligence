@@ -58,6 +58,22 @@ public class SqlRunStoreTests
     }
 
     [Fact]
+    public async Task SaveAsync_Backfill_StoresRange()
+    {
+        var settings = await SqlServerTestDatabase.CreateMigratedAsync();
+        var from = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+        var to = new DateTime(2026, 8, 31, 0, 0, 0, DateTimeKind.Utc);
+        var run = new RunRecord { RunId = 9, Trigger = "manual", StartedAt = Start, BackfillFrom = from, BackfillTo = to };
+
+        await new SqlRunStore(settings).SaveAsync(run, CancellationToken.None);
+
+        await using var connection = new SqlConnection(settings.ConnectionString);
+        var range = await connection.QuerySingleAsync<(DateTime? From, DateTime? To)>(
+            "SELECT backfill_from, backfill_to FROM ops.run WHERE run_id = 9");
+        Assert.Equal((from, to), (range.From, range.To));
+    }
+
+    [Fact]
     public async Task GetLastSuccessfulFinish_NoRuns_ReturnsNull()
     {
         var settings = await SqlServerTestDatabase.CreateMigratedAsync();
