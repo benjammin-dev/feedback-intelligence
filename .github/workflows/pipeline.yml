@@ -11,6 +11,14 @@ on:
         description: "First run only: start without history (the data branch doesn't exist yet)"
         type: boolean
         default: false
+      backfill_from:
+        description: "Backfill: re-fetch issues created on or after this date (YYYY-MM-DD, at most 365 days ago). Empty for a normal run"
+        type: string
+        default: ""
+      backfill_to:
+        description: "Backfill: last creation date to re-fetch (YYYY-MM-DD). Empty means today"
+        type: string
+        default: ""
 
 # Least privilege (NFR-SEC-02): read-only by default. Only the deploy job can write to Pages,
 # only save-history can push (to the data branch), and only the alert job can write issues.
@@ -102,6 +110,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           Operations__Bootstrap: ${{ inputs.bootstrap == true }}
+          # Empty on scheduled runs. Passed as environment variables, never pasted into a script.
+          Backfill__From: ${{ inputs.backfill_from }}
+          Backfill__To: ${{ inputs.backfill_to }}
         run: dotnet run --project src/FeedbackIntel.Pipeline --configuration Release --no-build
 
       - name: Assemble site

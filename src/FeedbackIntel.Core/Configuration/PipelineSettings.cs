@@ -24,6 +24,9 @@ public sealed class PipelineSettings
     /// <summary>How issue text is kept.</summary>
     public TextOptions Text { get; set; } = new();
 
+    /// <summary>An optional backfill range for this run, set by the workflow, not the file.</summary>
+    public BackfillOptions Backfill { get; set; } = new();
+
     /// <summary>
     /// Returns every problem with the settings, so a bad config file fails at startup
     /// with a clear message instead of partway through a run (FR-CFG-01).
@@ -90,6 +93,11 @@ public sealed class PipelineSettings
         if (Text.BodyMaxCharacters is < 1 or > 4000)
         {
             problems.Add("Text:BodyMaxCharacters must be between 1 and 4000, the size of cleaned.issue.body_redacted.");
+        }
+
+        if (Backfill.FindProblem() is { } backfillProblem)
+        {
+            problems.Add(backfillProblem);
         }
 
         return problems;

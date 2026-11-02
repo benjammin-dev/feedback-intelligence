@@ -74,4 +74,13 @@ public class PipelineSettingsTests
 
         Assert.Contains(settings.FindProblems(), problem => problem.StartsWith("Operations:StaleDataAlertHours", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void FindProblems_InvalidBackfill_IsReported()
+    {
+        var settings = Valid();
+        settings.Backfill.From = "yesterday";
+
+        Assert.Contains(settings.FindProblems(), problem => problem.StartsWith("Backfill:", StringComparison.Ordinal));
+    }
 }

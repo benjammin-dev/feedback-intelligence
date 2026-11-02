@@ -41,6 +41,13 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
+      # The config file is checked on its own first, so a bad config change fails a clearly
+      # named step (FR-CFG-02). The full test run below includes these tests again.
+      - name: Validate config (FR-CFG-02)
+        run: >
+          dotnet test tests/FeedbackIntel.Core.Tests --no-build --configuration Release
+          --filter "FullyQualifiedName~ConfigFileTests"
+
       - name: Test with coverage
         run: >
           dotnet test --no-build --configuration Release
