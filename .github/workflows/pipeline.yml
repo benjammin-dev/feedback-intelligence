@@ -12,7 +12,8 @@ on:
         type: boolean
         default: false
 
-# Least privilege (NFR-SEC-02): read-only by default; only the deploy job can write to Pages.
+# Least privilege (NFR-SEC-02): read-only by default. Only the deploy job can write to Pages,
+# only save-history can push (to the data branch), and only the alert job can write issues.
 permissions:
   contents: read
 
@@ -26,6 +27,11 @@ jobs:
     name: Run pipeline
     runs-on: ubuntu-latest
     timeout-minutes: 50
+    # What the pipeline found, for the alert job. Empty when the run never got that far.
+    outputs:
+      failed_step: ${{ steps.pipeline.outputs.failed_step }}
+      error: ${{ steps.pipeline.outputs.error }}
+      stale_hours: ${{ steps.pipeline.outputs.stale_hours }}
 
     steps:
       - name: Check out code
@@ -91,6 +97,7 @@ jobs:
           exit 1
 
       - name: Run pipeline
+        id: pipeline
         timeout-minutes: 40
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -169,3 +176,91 @@ jobs:
           fi
           git commit -q -m "data: history from run ${{ github.run_id }}"
           git push origin data
+
+  # Opens, updates, or closes the alert issue (US-10). Runs whatever happened before it, so a
+  # failure anywhere, including a build error or a timeout, is visible within one run (NFR-OBS-02).
+  alert:
+    name: Raise or resolve alert
+    needs: [run, deploy, save-history]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+
+    steps:
+      # Every value reaches the script through environment variables, never by pasting ${{ }}
+      # into the script itself, so text in an error message can't run as a command.
+      - name: Update alert issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_RESULT: ${{ needs.run.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          SAVE_RESULT: ${{ needs.save-history.result }}
+          FAILED_STEP: ${{ needs.run.outputs.failed_step }}
+          ERROR: ${{ needs.run.outputs.error }}
+          STALE_HOURS: ${{ needs.run.outputs.stale_hours }}
+        run: |
+          set -euo pipefail
+          label="pipeline-alert"
+          gh label create "$label" --color B60205 --force \
+            --description "Opened automatically when the pipeline fails or data is stale"
+
+          # A job that was skipped only because an earlier one failed isn't a separate problem.
+          failed=()
+          [ "$RUN_RESULT" = "success" ] || failed+=("Run pipeline ($RUN_RESULT)")
+          [[ "$DEPLOY_RESULT" =~ ^(success|skipped)$ ]] || failed+=("Deploy to GitHub Pages ($DEPLOY_RESULT)")
+          [[ "$SAVE_RESULT" =~ ^(success|skipped)$ ]] || failed+=("Save history ($SAVE_RESULT)")
+
+          stale_note=""
+          if [ -n "$STALE_HOURS" ]; then
+            stale_note="Data was $STALE_HOURS hours old when this run started, older than the alert threshold."
+          fi
+
+          body="$RUNNER_TEMP/alert.md"
+          if [ ${#failed[@]} -gt 0 ]; then
+            failed_list=$(printf '%s, ' "${failed[@]}")
+            {
+              echo "**The pipeline failed.** The dashboard keeps showing the last good data."
+              echo
+              echo "- Run: $RUN_URL"
+              echo "- Failed job: ${failed_list%, }"
+              echo "- Failed step: ${FAILED_STEP:-none reported; see the run log}"
+              if [ -n "$ERROR" ]; then
+                printf '\nError:\n\n```text\n%s\n```\n' "$ERROR"
+              fi
+              if [ -n "$stale_note" ]; then
+                printf '\n%s\n' "$stale_note"
+              fi
+            } > "$body"
+          elif [ -n "$stale_note" ]; then
+            printf '**Stale data.** %s This run succeeded and refreshed it.\n\n- Run: %s\n' \
+              "$stale_note" "$RUN_URL" > "$body"
+          else
+            printf 'Resolved: this run succeeded.\n\n- Run: %s\n' "$RUN_URL" > "$body"
+          fi
+
+          # At most one alert is open at a time; a repeat problem becomes a comment (FR-OPS-03).
+          open=$(gh issue list --label "$label" --state open --limit 1 --json number --jq '.[0].number // empty')
+
+          if [ ${#failed[@]} -gt 0 ]; then
+            if [ -n "$open" ]; then
+              gh issue comment "$open" --body-file "$body"
+              echo "Commented on alert #$open"
+            else
+              where="${FAILED_STEP:-${failed[0]% (*}}"
+              gh issue create --label "$label" --body-file "$body" --title "Pipeline alert: failed in $where"
+            fi
+          elif [ -n "$open" ]; then
+            gh issue comment "$open" --body-file "$body"
+            gh issue close "$open" --reason completed
+            echo "Closed alert #$open"
+          elif [ -n "$stale_note" ]; then
+            # Already fixed by this run, but opened and closed so the gap is on record and notified.
+            url=$(gh issue create --label "$label" --body-file "$body" --title "Pipeline alert: data was stale")
+            gh issue close "$url" --reason completed
+          else
+            echo "No alert needed"
+          fi

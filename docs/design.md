@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.3 |
+| **Version** | 1.4 |
 | **Date** | 2026-11-01 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Project plan](project-plan.md), [Requirements](requirements.md), [Data dictionary](data-dictionary.md), [Decision records](adr/README.md) |
@@ -62,7 +62,7 @@ The **data contract** lists every field allowed in published and history files; 
 
 **Dependency rule:** Infrastructure depends on Core; Core depends on nothing. Every external service sits behind an interface, so it can be faked in tests or replaced by another provider (NFR-MNT-03). Class-level documentation lives in the code as XML doc comments.
 
-**Interfaces:** `IPipelineStep`, `IIssueSource`, `IPiiRedactor`, `IChatModel`, `IIssueEnricher`, `IInsightWriter`, `IDatabaseMigrator`, `IIssueStore`, `IEnrichmentStore`, `IRunStore`, `IReportingBuilder`, `IQualityChecker`, `IHistoryStore`, `IPublisher`, `IAlerter`, `IClock`.
+**Interfaces:** `IPipelineStep`, `IIssueSource`, `IPiiRedactor`, `IChatModel`, `IIssueEnricher`, `IInsightWriter`, `IDatabaseMigrator`, `IIssueStore`, `ICleanedIssueStore`, `IWatermarkStore`, `IEnrichmentStore`, `IRunStore`, `IReportingBuilder`, `IQualityChecker`, `IHistoryStore`, `IPublisher`, `IStaleDataReporter`, `IClock`.
 
 ---
 
@@ -71,7 +71,7 @@ The **data contract** lists every field allowed in published and history files; 
 ### Rules
 
 1. **Temporary errors are retried; permanent errors are not.** Network errors, timeouts, and rate-limit responses are retried up to 3 times with increasing waits (2, 4, 8 seconds). Bad data, bad configuration, and code errors fail immediately.
-2. **Any failure stops the run.** The orchestrator records the failed step, saves the run record, raises an alert, and exits with a failure code. Nothing later runs, so nothing half-finished is published.
+2. **Any failure stops the run.** The orchestrator records the failed step and error, saves the run record, and exits with a failure code; the workflow's alert job then raises the alert (see *Alerts* below). Nothing later runs, so nothing half-finished is published.
 3. **A failed run is never harmful.** The dashboard keeps the last good data, and the watermark doesn't move, so the next run picks up everything missed.
 4. **Timeouts:** the pipeline step has a 40-minute limit inside a 50-minute job, leaving time for the failure-alert step. The normal run target is 30 minutes (NFR-PERF-03).
 5. **Logging:** every log entry carries the run ID and step name automatically (NFR-OBS-01). Logs never include issue text, because run logs of a public repository are public.
@@ -80,7 +80,7 @@ The **data contract** lists every field allowed in published and history files; 
 
 | # | Step | On failure | Retried? |
 |---|---|---|---|
-| — | Freshness check (after restore) | Stale-data alert if data is older than 48 hours; the run continues | — |
+| — | Freshness check (after restore) | Stale-data alert if the last successful run finished more than 48 hours ago; the run continues | — |
 | 1 | Migrate database | Alert | Waits up to 2 minutes for SQL Server; script errors not retried |
 | 2 | Restore history | Alert, unless it is a manual **bootstrap** run | No |
 | 3 | Ingest issues | Alert; also fails if more than 10% of records are rejected, once at least 20 were fetched | Yes; waits for a rate-limit reset only if under 15 minutes |
@@ -88,13 +88,25 @@ The **data contract** lists every field allowed in published and history files; 
 | 5 | Enrich | Not a run failure: invalid answers become `unclassified`; unprocessed issues stay `pending` | Yes; requests spaced about 4 seconds apart; every attempt counts against the daily budget |
 | 6 | Rebuild reporting | Alert | No |
 | 7 | Build insights | Not a run failure: topics show "unavailable today"; a missing digest is generated on the next run | Yes |
-| 8 | Quality checks | Alert listing every failed check; nothing published | No |
+| 8 | Quality checks: row counts, required fields, valid values, freshness | Alert listing every failed check and how many rows failed it; nothing published | No |
 | 9 | Publish (write files) | Alert; contract violations are treated as possible privacy issues | Write errors yes; violations no |
 | 10 | Advance watermarks | Alert. Runs only after publishing succeeded, so a failed run never skips issues | No |
 | 11 | Save history (write files) | Alert | Yes |
-| — | Workflow: deploy Pages, push history | Workflow-level alert, if the pipeline hasn't already raised one | Yes |
+| — | Workflow: deploy Pages, push history | Alert from the same alert job | Yes |
 
 **Two deliberate exceptions:** AI problems never fail the run, because the AI is an enhancement and the dashboard should still update. Redaction problems always fail it, because privacy is never traded for availability.
+
+### Alerts
+
+The pipeline doesn't write issues itself. It passes what it found to the workflow as step outputs (failed step, error, and data age when stale), and a separate **alert** job, the only part of the system allowed to write issues (NFR-SEC-02), acts on them. The alert job runs after every run, whatever happened, so a build error, timeout, or failed deploy is reported too (NFR-OBS-02).
+
+| Situation | What the alert job does |
+|---|---|
+| Any job failed or was cancelled | Comments on the open alert issue, or opens one if none is open (FR-OPS-02, FR-OPS-03). The issue has the failed job and step, the error, and the run link. |
+| Data was stale (older than `StaleDataAlertHours`) | Adds a stale-data note to the failure alert; if the run succeeded and nothing was open, opens an alert and closes it at once, so the gap is on record and notified (NFR-REL-02). |
+| The run succeeded and an alert is open | Comments that it is resolved, with the run link, and closes it. |
+
+At most one alert issue, labeled `pipeline-alert`, is open at a time; later problems become comments on it. Error text passes through two filters first: SQL Server errors that can quote data values (such as truncation and conversion errors) are reduced to their error number, and the text is cut to one line of at most 500 characters. Values reach the alert script only through environment variables, so error text can't run as a command.
 
 ---
 
@@ -223,6 +235,7 @@ The `data` branch holds only history files and is written only by the pipeline w
 
 | Version | Date | Change |
 |---|---|---|
+| 1.4 | 2026-11-01 | Added the *Alerts* section: alerts are raised by a separate workflow job from the pipeline's step outputs. Listed the quality checks; replaced `IAlerter` with `IStaleDataReporter`, and added `ICleanedIssueStore` and `IWatermarkStore` to the interface list. |
 | 1.3 | 2026-11-01 | Added the advance-watermarks step before saving history; the rejection limit applies once at least 20 issues were fetched, so small incremental runs aren't failed by one unusual issue. |
 | 1.2 | 2026-10-31 | Added the `Privacy` section to the configuration sample. |
 | 1.1 | 2026-10-24 | Recorded results of the M2 open items. |

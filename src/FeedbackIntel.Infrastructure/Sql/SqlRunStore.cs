@@ -6,7 +6,7 @@ using Microsoft.Data.SqlClient;
 
 namespace FeedbackIntel.Infrastructure.Sql;
 
-/// <summary>Saves run records to <c>ops.run</c>, inserting the first time and updating after.</summary>
+/// <summary>Saves run records to <c>ops.run</c>, inserting the first time and updating after, and reads them back.</summary>
 public sealed class SqlRunStore(DatabaseSettings settings) : IRunStore
 {
     private const string UpsertSql = """
@@ -55,6 +55,18 @@ public sealed class SqlRunStore(DatabaseSettings settings) : IRunStore
         await using var connection = new SqlConnection(settings.ConnectionString);
         await connection.ExecuteAsync(
             new CommandDefinition(UpsertSql, parameters, cancellationToken: cancellationToken));
+    }
+
+    /// <inheritdoc />
+    public async Task<DateTime?> GetLastSuccessfulFinishAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = new SqlConnection(settings.ConnectionString);
+        var finishedAt = await connection.ExecuteScalarAsync<DateTime?>(new CommandDefinition(
+            "SELECT MAX(finished_at) FROM ops.run WHERE status = 'succeeded'",
+            cancellationToken: cancellationToken));
+
+        // datetime2 has no time zone; every time in the database is UTC.
+        return finishedAt is null ? null : DateTime.SpecifyKind(finishedAt.Value, DateTimeKind.Utc);
     }
 
     /// <summary>The lowercase values allowed by the <c>CK_run_status</c> constraint.</summary>

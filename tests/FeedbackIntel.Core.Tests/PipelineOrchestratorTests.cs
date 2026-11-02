@@ -126,6 +126,34 @@ public class PipelineOrchestratorTests
         Assert.Equal("InvalidOperationException: original", run.ErrorMessage);
     }
 
+    [Fact]
+    public async Task RunAsync_CustomErrorDescriber_IsUsedForTheRecord()
+    {
+        var orchestrator = new PipelineOrchestrator(
+            [Step("ingest", _ => throw new InvalidOperationException("contains a value"))],
+            new FakeRunStore(),
+            _clock,
+            ex => $"{ex.GetType().Name}: withheld");
+
+        var run = await orchestrator.RunAsync(42, "schedule", CancellationToken.None);
+
+        Assert.Equal("InvalidOperationException: withheld", run.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RunAsync_LongDescribedError_IsTruncatedToColumnSize()
+    {
+        var orchestrator = new PipelineOrchestrator(
+            [Step("ingest", _ => throw new InvalidOperationException("boom"))],
+            new FakeRunStore(),
+            _clock,
+            _ => new string('x', 5000));
+
+        var run = await orchestrator.RunAsync(42, "schedule", CancellationToken.None);
+
+        Assert.Equal(PipelineOrchestrator.MaxErrorMessageLength, run.ErrorMessage!.Length);
+    }
+
     private PipelineOrchestrator Create(FakeRunStore store, params IPipelineStep[] steps) =>
         new(steps, store, _clock);
 
