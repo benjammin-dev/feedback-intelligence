@@ -62,6 +62,11 @@ public sealed class PipelineSettings
             problems.Add("Operations:SqlStartupWaitSeconds must be between 1 and 600.");
         }
 
+        if (Operations.StaleDataAlertHours is < 24 or > 720)
+        {
+            problems.Add("Operations:StaleDataAlertHours must be between 24 and 720, because runs are a day apart.");
+        }
+
         if (string.IsNullOrWhiteSpace(Publishing.OutputDirectory))
         {
             problems.Add("Publishing:OutputDirectory must not be empty.");

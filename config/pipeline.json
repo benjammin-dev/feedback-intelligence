@@ -11,6 +11,7 @@
     "RateLimitMaxWaitMinutes": 15
   },
   "Operations": {
+    "StaleDataAlertHours": 48,
     "SqlStartupWaitSeconds": 120
   },
   "Privacy": {

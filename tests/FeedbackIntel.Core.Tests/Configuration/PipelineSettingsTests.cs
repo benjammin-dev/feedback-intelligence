@@ -63,4 +63,15 @@ public class PipelineSettingsTests
 
         Assert.Equal(3, settings.FindProblems().Count);
     }
+
+    [Theory]
+    [InlineData(23)]
+    [InlineData(721)]
+    public void FindProblems_StaleAlertHoursOutOfRange_IsReported(int hours)
+    {
+        var settings = Valid();
+        settings.Operations.StaleDataAlertHours = hours;
+
+        Assert.Contains(settings.FindProblems(), problem => problem.StartsWith("Operations:StaleDataAlertHours", StringComparison.Ordinal));
+    }
 }

@@ -5,7 +5,19 @@ namespace FeedbackIntel.Core.Orchestration;
 /// nothing half-finished is published. Every run, successful or not, ends
 /// with its record saved.
 /// </summary>
-public sealed class PipelineOrchestrator(IEnumerable<IPipelineStep> steps, IRunStore runStore, IClock clock)
+/// <param name="steps">The steps, in the order they run.</param>
+/// <param name="runStore">Where the run record is saved.</param>
+/// <param name="clock">The source of start and finish times.</param>
+/// <param name="describeError">
+/// Turns a failure into the text stored in the run record and shown in the alert issue.
+/// Defaults to <see cref="DescribeError"/>; the pipeline passes one that also withholds
+/// database errors that can quote data values.
+/// </param>
+public sealed class PipelineOrchestrator(
+    IEnumerable<IPipelineStep> steps,
+    IRunStore runStore,
+    IClock clock,
+    Func<Exception, string>? describeError = null)
 {
     /// <summary>Matches the size of <c>ops.run.error_message</c>.</summary>
     public const int MaxErrorMessageLength = 2000;
@@ -14,6 +26,10 @@ public sealed class PipelineOrchestrator(IEnumerable<IPipelineStep> steps, IRunS
     public const string SaveRunRecordStepName = "save run record";
 
     private readonly IReadOnlyList<IPipelineStep> _steps = steps.ToList();
+    private readonly Func<Exception, string> _describeError = describeError ?? DescribeError;
+
+    /// <summary>The default error text: the exception type and its message.</summary>
+    public static string DescribeError(Exception exception) => $"{exception.GetType().Name}: {exception.Message}";
 
     /// <summary>Runs every step and returns the finished run record.</summary>
     public async Task<RunRecord> RunAsync(long runId, string trigger, CancellationToken cancellationToken)
@@ -58,11 +74,11 @@ public sealed class PipelineOrchestrator(IEnumerable<IPipelineStep> steps, IRunS
         return run;
     }
 
-    private static void MarkFailed(RunRecord run, string stepName, Exception ex)
+    private void MarkFailed(RunRecord run, string stepName, Exception ex)
     {
         run.Status = RunStatus.Failed;
         run.FailedStep = stepName;
-        run.ErrorMessage = Truncate($"{ex.GetType().Name}: {ex.Message}", MaxErrorMessageLength);
+        run.ErrorMessage = Truncate(_describeError(ex), MaxErrorMessageLength);
     }
 
     private static string Truncate(string text, int maxLength) =>

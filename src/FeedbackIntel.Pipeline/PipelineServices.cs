@@ -3,12 +3,15 @@ using FeedbackIntel.Core.Configuration;
 using FeedbackIntel.Core.Database;
 using FeedbackIntel.Core.History;
 using FeedbackIntel.Core.Ingestion;
+using FeedbackIntel.Core.Monitoring;
 using FeedbackIntel.Core.Orchestration;
 using FeedbackIntel.Core.Privacy;
 using FeedbackIntel.Core.Publishing;
+using FeedbackIntel.Core.Quality;
 using FeedbackIntel.Core.Reporting;
 using FeedbackIntel.Core.Resilience;
 using FeedbackIntel.Infrastructure;
+using FeedbackIntel.Infrastructure.Actions;
 using FeedbackIntel.Infrastructure.GitHub;
 using FeedbackIntel.Infrastructure.History;
 using FeedbackIntel.Infrastructure.Privacy;
@@ -73,15 +76,23 @@ internal static class PipelineServices
             provider.GetRequiredService<RetryPolicy>()));
         services.AddSingleton<ICleanedIssueStore, SqlCleanedIssueStore>();
         services.AddSingleton<IReportingBuilder, SqlReportingBuilder>();
+        services.AddSingleton<IQualityChecker, SqlQualityChecker>();
         services.AddSingleton<IPublisher, SitePublisher>();
         services.AddSingleton<IHistoryStore, ParquetHistoryStore>();
+
+        // Step outputs for the workflow's alert job; GITHUB_OUTPUT is only set in GitHub Actions.
+        services.AddSingleton(provider => new GitHubActionsOutput(
+            configuration["GITHUB_OUTPUT"], provider.GetRequiredService<ILogger<GitHubActionsOutput>>()));
+        services.AddSingleton<IStaleDataReporter>(provider => provider.GetRequiredService<GitHubActionsOutput>());
 
         // Steps, in the order they run (numbers match the design's step table)
         services.AddSingleton<MigrateDatabaseStep>();   // 1
         services.AddSingleton<RestoreHistoryStep>();    // 2
+        services.AddSingleton<FreshnessCheckStep>();    // after restore, so earlier runs are known
         services.AddSingleton<IngestIssuesStep>();      // 3
         services.AddSingleton<RedactIssuesStep>();      // 4
         services.AddSingleton<RebuildReportingStep>();  // 6
+        services.AddSingleton<QualityChecksStep>();     // 8: nothing is published unless these pass
         services.AddSingleton<PublishStep>();           // 9
         services.AddSingleton<AdvanceWatermarksStep>(); // 10: only after everything else succeeded
         services.AddSingleton<SaveHistoryStep>();       // 11
@@ -93,9 +104,11 @@ internal static class PipelineServices
             [
                 provider.GetRequiredService<MigrateDatabaseStep>(),
                 provider.GetRequiredService<RestoreHistoryStep>(),
+                provider.GetRequiredService<FreshnessCheckStep>(),
                 provider.GetRequiredService<IngestIssuesStep>(),
                 provider.GetRequiredService<RedactIssuesStep>(),
                 provider.GetRequiredService<RebuildReportingStep>(),
+                provider.GetRequiredService<QualityChecksStep>(),
                 provider.GetRequiredService<PublishStep>(),
                 provider.GetRequiredService<AdvanceWatermarksStep>(),
                 provider.GetRequiredService<SaveHistoryStep>(),
@@ -104,7 +117,8 @@ internal static class PipelineServices
             return new PipelineOrchestrator(
                 steps.Select(step => new LoggingStep(step, logger)),
                 provider.GetRequiredService<IRunStore>(),
-                provider.GetRequiredService<IClock>());
+                provider.GetRequiredService<IClock>(),
+                SqlErrorDescriber.Describe);
         });
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true });

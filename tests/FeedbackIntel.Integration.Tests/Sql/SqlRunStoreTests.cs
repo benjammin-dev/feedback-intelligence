@@ -57,6 +57,41 @@ public class SqlRunStoreTests
         Assert.Equal("HttpRequestException: GitHub returned 502", row.ErrorMessage);
     }
 
+    [Fact]
+    public async Task GetLastSuccessfulFinish_NoRuns_ReturnsNull()
+    {
+        var settings = await SqlServerTestDatabase.CreateMigratedAsync();
+
+        Assert.Null(await new SqlRunStore(settings).GetLastSuccessfulFinishAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetLastSuccessfulFinish_IgnoresFailedAndRunningRuns()
+    {
+        var settings = await SqlServerTestDatabase.CreateMigratedAsync();
+        var store = new SqlRunStore(settings);
+        await store.SaveAsync(
+            new RunRecord { RunId = 1, Trigger = "schedule", StartedAt = Start }.AsSucceeded(Start.AddMinutes(5)),
+            CancellationToken.None);
+        await store.SaveAsync(
+            new RunRecord
+            {
+                RunId = 2,
+                Trigger = "schedule",
+                StartedAt = Start.AddDays(1),
+                FinishedAt = Start.AddDays(1).AddMinutes(1),
+                Status = RunStatus.Failed,
+            },
+            CancellationToken.None);
+        await store.SaveAsync(
+            new RunRecord { RunId = 3, Trigger = "manual", StartedAt = Start.AddDays(2) }, CancellationToken.None);
+
+        var lastSuccess = await store.GetLastSuccessfulFinishAsync(CancellationToken.None);
+
+        Assert.Equal(Start.AddMinutes(5), lastSuccess);
+        Assert.Equal(DateTimeKind.Utc, lastSuccess!.Value.Kind);
+    }
+
     private static async Task<RunRow> ReadRunAsync(DatabaseSettings settings, long runId)
     {
         await using var connection = new SqlConnection(settings.ConnectionString);

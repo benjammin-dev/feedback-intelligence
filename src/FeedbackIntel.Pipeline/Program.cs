@@ -1,4 +1,5 @@
 using FeedbackIntel.Core.Orchestration;
+using FeedbackIntel.Infrastructure.Actions;
 using FeedbackIntel.Pipeline;
 
 using Microsoft.Extensions.Configuration;
@@ -29,6 +30,9 @@ using (logger.BeginScope("Run {RunId}", runId))
     logger.LogInformation("Pipeline starting ({Trigger})", trigger);
 
     var run = await services.GetRequiredService<PipelineOrchestrator>().RunAsync(runId, trigger, cancellation.Token);
+
+    // The workflow's alert job reads these to open, update, or close the alert issue.
+    services.GetRequiredService<GitHubActionsOutput>().WriteRunResult(run);
 
     if (run.Status == RunStatus.Succeeded)
     {

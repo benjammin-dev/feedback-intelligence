@@ -9,6 +9,9 @@ internal sealed class FakeRunStore : IRunStore
 
     public bool ShouldFail { get; init; }
 
+    /// <summary>What <see cref="GetLastSuccessfulFinishAsync"/> returns.</summary>
+    public DateTime? LastSuccessfulFinish { get; init; }
+
     public Task SaveAsync(RunRecord run, CancellationToken cancellationToken)
     {
         if (ShouldFail)
@@ -19,4 +22,7 @@ internal sealed class FakeRunStore : IRunStore
         Saved.Add(run);
         return Task.CompletedTask;
     }
+
+    public Task<DateTime?> GetLastSuccessfulFinishAsync(CancellationToken cancellationToken) =>
+        Task.FromResult(LastSuccessfulFinish);
 }

@@ -24,7 +24,7 @@ Personal information such as emails, IP addresses, and access tokens is removed 
 
 ![Architecture: one daily run](docs/diagrams/architecture.png)
 
-A scheduled GitHub Actions workflow runs a C# pipeline. Each run starts temporary SQL Server and Presidio containers, restores history, processes issues through raw, cleaned, and reporting layers, and publishes a static dashboard to GitHub Pages.
+A scheduled GitHub Actions workflow runs a C# pipeline. Each run starts temporary SQL Server and Presidio containers, restores history, processes issues through raw, cleaned, and reporting layers, and publishes a static dashboard to GitHub Pages. Quality checks must pass before anything is published, and any failure or stale data opens a `pipeline-alert` issue, which the next successful run closes.
 
 | Area | Technology |
 |---|---|

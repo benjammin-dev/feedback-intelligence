@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.5 |
+| **Version** | 1.6 |
 | **Date** | 2026-11-01 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Requirements](requirements.md), [ADR 0009: data layers](adr/0009-raw-cleaned-reporting-layers.md), [ADR 0013: bodies excluded from history](adr/0013-exclude-bodies-from-history.md) |
@@ -158,7 +158,7 @@ One row per pipeline run. It's the system's logbook: it feeds the pipeline healt
 | `ai_cache_hits` | `int` | How many issues reused cached AI results. Shows how much the cache saves. |
 | `issues_unclassified` | `int` | How many issues the AI couldn't classify. A spike can mean a prompt or model problem. |
 | `failed_step` | `varchar(50)` | Which step failed, empty on success. Included in alert issues (FR-OPS-02). |
-| `error_message` | `nvarchar(2000)` | The error text, empty on success. Truncated, and must contain only system details, never issue content, because it's saved to the public history branch and may appear in alerts. |
+| `error_message` | `nvarchar(2000)` | The error text, empty on success. Truncated, and must contain only system details, never issue content, because it's saved to the public history branch and may appear in alerts. SQL Server errors that can quote data values are stored as their error number only. |
 
 ### `ops.watermark`
 
@@ -364,6 +364,7 @@ The two small JSON files let the dashboard show the Overview page immediately wh
 
 | Version | Date | Change |
 |---|---|---|
+| 1.6 | 2026-11-01 | `ops.run.error_message` keeps only the error number for SQL Server errors that can quote data values. |
 | 1.5 | 2026-11-01 | Noted which weeks `reporting.weekly_metrics` covers and how `week_start` is published. The automated data contract test now reads section 7 directly. |
 | 1.4 | 2026-11-01 | Clarified that ingestion resumes at, not after, the watermark. |
 | 1.3 | 2026-10-31 | Clarified that `reporting.site_info.data_updated_at` is the run's start time. |
