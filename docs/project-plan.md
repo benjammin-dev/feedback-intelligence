@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.6 |
-| **Date** | 2026-11-01 |
+| **Version** | 1.7 |
+| **Date** | 2026-11-05 |
 | **Owner** | Benjamin Rose |
 
 ---
@@ -109,7 +109,7 @@ Issue authors never use the system, but their writing is what it processes. Prot
 | A2 | GitHub's Issues API stays publicly accessible, and its rate limits suit daily incremental fetches | Make test calls against winget-cli and measure calls used per run | Walking skeleton | Confirmed in M2: a 90-day fetch for winget-cli finished in under 4 seconds, far inside the limits |
 | A3 | GitHub Actions and Pages stay free for public repositories | Check GitHub's docs and billing page | Before deployment | Confirmed in M2: October's usage was fully covered by included usage, so the net cost was $0 |
 | A4 | SQL Server Express runs in a Docker container on GitHub's Linux runners within reasonable time | Run a test workflow that starts SQL Server and runs one query | Walking skeleton | Confirmed in M2: SQL Server was ready before the pipeline started (migration took 0.7 s); the whole run took 49 s |
-| A5 | Presidio detects the common PII in issues (emails, IPs, tokens, usernames in file paths) well enough | Test against a hand-checked sample of real issues | Before redaction is enabled | — |
+| A5 | Presidio detects the common PII in issues (emails, IPs, tokens, usernames in file paths) well enough | Test against a hand-checked sample of real issues | Before redaction is enabled | Confirmed for titles at the end of M3: the 216 published winget-cli titles contained no emails, IP addresses, tokens, or usernames in paths; 3 had a four-part version number (such as 7.6.8.0) redacted as an IP address. Over-redaction is the safe failure, so it's accepted. Bodies are checked again in M4, before they reach the AI |
 | A6 | The AI model classifies issues accurately enough to be useful | Measure against a hand-labeled set of about 100 issues | Before AI results are published | — |
 | A7 | winget-cli's issue volume fits within the free AI limits, including the first backfill | Count issues over the planned history window; estimate requests needed | Before first AI run | — |
 | A8 | Analyzing public issues and showing summaries with links to the originals is permitted | Review GitHub's terms of service and acceptable use policies | Before issue titles or summaries are published (M3) | Reviewed 2026-11-01: GitHub's Acceptable Use Policies allow using public information collected through the API, and prohibit spam, selling personal information, and excessive automated activity. The project uses the API within rate limits, stores no usernames, redacts personal information, publishes only redacted titles and summaries with links to the originals, and removes issues on request (see README). This is a reading of the policies, not legal advice |
@@ -133,8 +133,14 @@ Likelihood and impact are rated Low, Medium, or High.
 | R8 | SQL Server container is slow or fails on GitHub runners | Low | Medium | Validate early in the walking skeleton (A4) | Retry step; health-check wait before queries |
 | R9 | Repository grows too large from committing data history daily | Medium | Medium | Store compact Parquet; keep a limited history window; monitor repository size | Move history to GitHub Releases assets or prune old snapshots |
 | R10 | Accidental charges | Low | Medium | No payment method on GitHub; paid usage left off | Check billing settings monthly |
-| R11 | Secrets leaked in code or logs | Low | High | Use only the built-in `GITHUB_TOKEN`; secret scanning in CI | Revoke and rotate immediately; audit history |
+| R11 | Secrets leaked in code or logs | Low | High | Use only the built-in `GITHUB_TOKEN`; GitHub secret scanning and push protection on the repository | Revoke and rotate immediately; audit history |
 | R12 | Scope creep or lost momentum at 5 hours a week | Medium | High | Fixed scope; small steps; project presentable at every milestone | Ship the current milestone and pause new features |
+
+**Review at the end of M3 (2026-11-05):**
+
+- **R6:** the pipeline has committed history to the `data` branch every day since 2026-11-01. Whether those commits count as activity can only be seen after 60 days, so it's checked again in M7, before interviews.
+- **R9:** each day's history is about 37 KB of Parquet files, so a year of daily commits for winget-cli adds roughly 13 MB. That's well within GitHub's limits; it's measured again in M6, when larger repositories are added.
+- **R5:** covered in M3 by redaction before anything is stored, the PII test set run end to end in CI and against the live service on every run, and the data contract test. See the [test strategy](test-strategy.md).
 
 ---
 
@@ -147,7 +153,7 @@ Estimates assume about 5 hours per week, with code drafted by an AI assistant an
 | **M0: Plan and design** | Project plan, requirements, design docs, ADRs | 1 | 6 days (Oct 13–18) | A well-documented project plan |
 | **M1: Foundation** | Dev environment (WSL, Docker), repository, standards, PR template, CI that builds and runs tests | 1 | 3 days (Oct 18–20) | A professionally set-up repository |
 | **M2: Walking skeleton** | winget-cli issues → SQL Server in Actions → one number on GitHub Pages, all automated | 1 | 5 days (Oct 20–24) | A working end-to-end pipeline, however small |
-| **M3: Core data pipeline and privacy** | Incremental ingest, Presidio redaction and PII tests, raw → cleaned → reporting T-SQL, quality checks, alert issues, config validation in CI, test strategy document, basic dashboard (overview, trends, issue explorer) | 2 | — | A complete, privacy-safe data engineering project |
+| **M3: Core data pipeline and privacy** | Incremental ingest, Presidio redaction and PII tests, raw → cleaned → reporting T-SQL, quality checks, alert issues, config validation in CI, test strategy document, basic dashboard (overview, trends, issue explorer) | 2 | 12 days (Oct 25–Nov 5) | A complete, privacy-safe data engineering project |
 | **M4: AI enrichment** | AI classification and summaries, caching, evaluation set with CI gate | 1–2 | — | An AI-integrated system with responsible-AI practices |
 | **M5: Insights** | Emerging topics, weekly digest, pipeline health page | 1 | — | The full product vision for one repository |
 | **M6: Scale out** | Onboard PowerToys, then VS Code with batching | 1 | — | A system that scales across products |
@@ -198,6 +204,7 @@ Personal information is redacted from M3 onward, before any issue text is publis
 
 | Version | Date | Change |
 |---|---|---|
+| 1.7 | 2026-11-05 | Completed M3: recorded its actual time, the result of assumption A5, and a review of risks R5, R6, and R9; linked the new test strategy; corrected the secret-scanning description. |
 | 1.6 | 2026-11-01 | Recorded the review of assumption A8 before issue titles are published. |
 | 1.5 | 2026-11-01 | Recorded that M2's daily schedule was confirmed by scheduled runs from 2026-10-26. |
 | 1.4 | 2026-10-31 | Added config validation in CI (FR-CFG-02) and the test strategy document to M3; noted that M2 needs a successful scheduled run. |

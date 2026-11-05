@@ -6,48 +6,55 @@ config:
     rankSpacing: 38
 ---
 flowchart TB
-    CFG["Config, prompts, SQL migrations<br/><i>GitHub repository</i>"]
-    HIST[("History, redacted only<br/><i>Parquet files in repository</i>")]
+    CFG["Config and SQL migrations<br/><i>main branch</i>"]
+    HIST[("Yesterday's history, redacted only<br/><i>Parquet files on the data branch</i>")]
     API["GitHub REST API<br/><i>source of issues</i>"]
 
     subgraph RUNNER["GitHub Actions runner: temporary, created and destroyed each run"]
-        ING["1. Issue ingestor<br/><i>C#</i>"]
+        RST["Restore history<br/>+ freshness check"]
+        ING["1. Ingest new and changed issues<br/><i>C#, from per-repository watermarks</i>"]
         RAW[("Raw layer<br/><i>SQL Server</i>")]
-        RED["2. PII redactor<br/><i>C#</i>"]
+        PCK{"Privacy check:<br/>known PII removed?"}
+        RED["2. Redact personal information<br/><i>C#</i>"]
         CLN[("Cleaned layer<br/><i>SQL Server</i>")]
-        ENR["3. AI enricher<br/><i>C#, cached, rate-limited</i>"]
-        RPT[("Reporting layer<br/><i>SQL Server</i>")]
-        INS["4. Insights builder<br/><i>T-SQL + C#</i>"]
-        QC{"5. Quality<br/>checks pass?"}
-        PUB["6. Publisher<br/><i>C#</i>"]
-        ALR["Alerter<br/><i>C#</i>"]
-        PRES[["Presidio container"]]
+        ENR["3. AI enrichment<br/><i>planned, M4</i>"]
+        RPT[("Reporting layer<br/><i>T-SQL procedure</i>")]
+        QC{"4. Quality<br/>checks pass?"}
+        PUB["5. Publish files<br/>+ save history"]
+        PRES[["Presidio containers"]]
     end
 
-    MODELS["GitHub Models<br/><i>AI service</i>"]
+    MODELS["GitHub Models<br/><i>AI service, M4</i>"]
+    HIST2[("Today's history<br/><i>committed to the data branch;<br/>tomorrow's run restores it</i>")]
     SITE["GitHub Pages<br/><i>static dashboard + published data</i>"]
     BROWSER["Viewer's browser<br/><i>DuckDB-WASM queries the data</i>"]
-    ISSUES["GitHub Issues<br/><i>alert opened, nothing published</i>"]
+    ALERT["Alert job<br/><i>opens, updates, or closes a GitHub issue</i>"]
 
     CFG -. settings .-> ING
-    HIST -- restore --> CLN
-    API -- new and changed issues --> ING
-    ING --> RAW --> RED --> CLN --> ENR --> RPT --> INS --> QC
+    HIST -- restore --> RST --> ING
+    API -- issues since the watermark --> ING
+    ING --> RAW --> PCK
+    PCK -- yes --> RED --> CLN --> ENR --> RPT --> QC
     RED <--> PRES
-    ENR <--> MODELS
+    PCK <--> PRES
+    ENR <-.-> MODELS
     QC -- yes --> PUB
-    QC -- no --> ALR --> ISSUES
     PUB -- deploy --> SITE --> BROWSER
-    PUB -- save --> HIST
+    PUB -- commit --> HIST2
+    PCK -- no --> ALERT
+    QC -- no --> ALERT
+    RST -. stale data .-> ALERT
 
     classDef step fill:#eaf1fd,stroke:#2f6fdb,color:#12233f
+    classDef planned fill:#ffffff,stroke:#2f6fdb,stroke-dasharray:5 4,color:#12233f
     classDef store fill:#fff7e6,stroke:#b7791f,color:#3d2a07
     classDef ext fill:#f3f4f6,stroke:#6b7280,color:#111827
     classDef out fill:#eaf7ef,stroke:#2f855a,color:#123d24
     classDef bad fill:#fdecec,stroke:#c53030,color:#5c1111
-    class ING,RED,ENR,INS,PUB,PRES step
-    class RAW,CLN,RPT,HIST,CFG store
+    class RST,ING,RED,PUB,PRES,PCK,QC step
+    class ENR planned
+    class RAW,CLN,RPT,HIST,HIST2,CFG store
     class API,MODELS ext
     class SITE,BROWSER out
-    class ALR,ISSUES bad
+    class ALERT bad
     style RUNNER fill:#fafbfc,stroke:#2f6fdb,stroke-dasharray:6 4,color:#12233f
