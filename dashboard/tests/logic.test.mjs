@@ -66,7 +66,20 @@ test("buildIssueQueries passes every visitor value as a parameter, never as SQL"
     assert.ok(!query.sql.includes("DROP"), query.sql);
     assert.equal((query.sql.match(/\?/g) ?? []).length, query.params.length);
   }
-  assert.deepEqual(count.params, [sneaky, "open", sneaky, "high", "2026-10-01", "2026-10-07", "upgrade", "x');", "drop", "table", "issues;", "--"]);
+  assert.deepEqual(count.params, [
+    sneaky,
+    "open",
+    sneaky,
+    "high",
+    "2026-10-01",
+    "2026-10-07",
+    "upgrade",
+    "x');",
+    "drop",
+    "table",
+    "issues;",
+    "--",
+  ]);
 });
 
 test("buildIssueQueries leaves out unset filters, 'all' repositories, and invalid dates", () => {
@@ -78,8 +91,16 @@ test("buildIssueQueries leaves out unset filters, 'all' repositories, and invali
 });
 
 test("buildIssueQueries accepts only known sort orders and whole-number offsets", () => {
-  assert.ok(buildIssueQueries({}, "slowest", 50).page.sql.endsWith(`days_to_close DESC NULLS LAST, issue_number DESC LIMIT ${PAGE_SIZE} OFFSET 50`));
-  assert.ok(buildIssueQueries({}, "1; DROP TABLE issues", -5).page.sql.endsWith(`created_at DESC, issue_number DESC LIMIT ${PAGE_SIZE} OFFSET 0`));
+  assert.ok(
+    buildIssueQueries({}, "slowest", 50).page.sql.endsWith(
+      `days_to_close DESC NULLS LAST, issue_number DESC LIMIT ${PAGE_SIZE} OFFSET 50`,
+    ),
+  );
+  assert.ok(
+    buildIssueQueries({}, "1; DROP TABLE issues", -5).page.sql.endsWith(
+      `created_at DESC, issue_number DESC LIMIT ${PAGE_SIZE} OFFSET 0`,
+    ),
+  );
   assert.ok(buildIssueQueries({}, "newest", "50; DROP").page.sql.endsWith("OFFSET 0"));
 });
 

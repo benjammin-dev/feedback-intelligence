@@ -11,7 +11,7 @@ namespace FeedbackIntel.Integration.Tests.Sql;
 /// </summary>
 public class SqlErrorDescriberTests
 {
-    private const string Secret = "jane.doe@example.com";
+    private const string PersonalValue = "jane.doe@example.com";
 
     [Fact]
     public async Task Describe_TruncationError_WithholdsTheQuotedValue()
@@ -21,7 +21,7 @@ public class SqlErrorDescriberTests
             CREATE TABLE #short (value varchar(5) NOT NULL);
             INSERT INTO #short (value) VALUES (@secret);
             """);
-        Assert.Contains(Secret[..5], error.Message, StringComparison.Ordinal); // SQL Server does quote it
+        Assert.Contains(PersonalValue[..5], error.Message, StringComparison.Ordinal); // SQL Server does quote it
 
         var description = SqlErrorDescriber.Describe(error);
 
@@ -38,7 +38,7 @@ public class SqlErrorDescriberTests
 
         var description = SqlErrorDescriber.Describe(wrapped);
 
-        Assert.DoesNotContain(Secret, description, StringComparison.Ordinal);
+        Assert.DoesNotContain(PersonalValue, description, StringComparison.Ordinal);
         Assert.StartsWith("InvalidOperationException: SQL Server error 245;", description, StringComparison.Ordinal);
     }
 
@@ -62,6 +62,6 @@ public class SqlErrorDescriberTests
     {
         var settings = await SqlServerTestDatabase.CreateMigratedAsync();
         await using var connection = new SqlConnection(settings.ConnectionString);
-        return await Assert.ThrowsAsync<SqlException>(() => connection.ExecuteAsync(sql, new { secret = Secret }));
+        return await Assert.ThrowsAsync<SqlException>(() => connection.ExecuteAsync(sql, new { secret = PersonalValue }));
     }
 }

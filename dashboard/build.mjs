@@ -42,7 +42,10 @@ async function main() {
 
   // DuckDB-WASM's browser API, bundled with Apache Arrow, which it imports by package name.
   await build({
-    stdin: { contents: 'export { AsyncDuckDB, ConsoleLogger, LogLevel } from "@duckdb/duckdb-wasm";', resolveDir: here },
+    stdin: {
+      contents: 'export { AsyncDuckDB, ConsoleLogger, LogLevel } from "@duckdb/duckdb-wasm";',
+      resolveDir: here,
+    },
     bundle: true,
     format: "esm",
     minify: true,
@@ -67,7 +70,9 @@ async function main() {
   const bytes = Buffer.from(await response.arrayBuffer());
   await writeFile(path.join(extensionDir, name), bytes);
 
-  console.log(`Dashboard built in ${outDir} (DuckDB ${version}, Parquet extension ${(bytes.length / 1e6).toFixed(1)} MB)`);
+  console.log(
+    `Dashboard built in ${outDir} (DuckDB ${version}, Parquet extension ${(bytes.length / 1e6).toFixed(1)} MB)`,
+  );
 }
 
 /** Asks the installed DuckDB-WASM build which DuckDB version it is, so the extension always matches. */

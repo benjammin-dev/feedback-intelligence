@@ -13,11 +13,21 @@ export function drawVolumeChart(canvas, weeks) {
     data: {
       labels: weeks.map((week) => shortDate(week.week_ms)),
       datasets: [
-        series("New issues", weeks.map((week) => week.new_issues), "--chart-1", { pointStyle: "circle" }),
-        series("Closed issues", weeks.map((week) => week.closed_issues), "--chart-2", {
-          pointStyle: "triangle",
-          borderDash: [6, 4],
-        }),
+        series(
+          "New issues",
+          weeks.map((week) => week.new_issues),
+          "--chart-1",
+          { pointStyle: "circle" },
+        ),
+        series(
+          "Closed issues",
+          weeks.map((week) => week.closed_issues),
+          "--chart-2",
+          {
+            pointStyle: "triangle",
+            borderDash: [6, 4],
+          },
+        ),
       ],
     },
     options: options("Issues per week"),
@@ -50,7 +60,16 @@ function draw(canvas, config) {
 
 function series(label, data, colorVariable, extra) {
   const value = color(colorVariable);
-  return { label, data, borderColor: value, backgroundColor: value, borderWidth: 2, pointRadius: 3, tension: 0.2, ...extra };
+  return {
+    label,
+    data,
+    borderColor: value,
+    backgroundColor: value,
+    borderWidth: 2,
+    pointRadius: 3,
+    tension: 0.2,
+    ...extra,
+  };
 }
 
 function options(yTitle) {
@@ -64,7 +83,12 @@ function options(yTitle) {
     plugins: { legend: { labels: { color: text, usePointStyle: true } } },
     scales: {
       x: { ticks: { color: text, maxRotation: 0, autoSkipPadding: 12 }, grid: { color: grid } },
-      y: { beginAtZero: true, title: { display: true, text: yTitle, color: text }, ticks: { color: text, precision: 0 }, grid: { color: grid } },
+      y: {
+        beginAtZero: true,
+        title: { display: true, text: yTitle, color: text },
+        ticks: { color: text, precision: 0 },
+        grid: { color: grid },
+      },
     },
   };
 }

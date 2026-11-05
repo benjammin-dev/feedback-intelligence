@@ -119,7 +119,10 @@ function showUpdated() {
     const notice = $("#stale");
     notice.replaceChildren(
       "This data is more than two days old, so the daily update may be failing. ",
-      link("https://github.com/benjammin-dev/feedback-intelligence/issues?q=label%3Apipeline-alert", "See pipeline alerts"),
+      link(
+        "https://github.com/benjammin-dev/feedback-intelligence/issues?q=label%3Apipeline-alert",
+        "See pipeline alerts",
+      ),
       ".",
     );
     notice.hidden = false;
@@ -202,7 +205,12 @@ const OVERVIEW_FIGURES = [
   { field: "closed_issues", label: "Closed issues" },
   { field: "bug_percent", label: "Bugs, as a share of new issues", unit: "%", ai: true },
   { field: "critical_count", label: "Critical issues", ai: true },
-  { field: "median_days_to_close", label: "Median days to close", unit: " days", note: "For issues closed in the period" },
+  {
+    field: "median_days_to_close",
+    label: "Median days to close",
+    unit: " days",
+    note: "For issues closed in the period",
+  },
 ];
 
 function renderOverview() {
@@ -224,7 +232,9 @@ function renderOverview() {
     const value = current[figure.field];
     const card = element("article", null, "card");
     card.append(element("h2", figure.label));
-    card.append(element("p", value == null ? "—" : `${formatNumber(value)}${figure.unit === "%" ? "%" : ""}`, "figure"));
+    card.append(
+      element("p", value == null ? "—" : `${formatNumber(value)}${figure.unit === "%" ? "%" : ""}`, "figure"),
+    );
 
     const change = describeChange(value, previous?.[figure.field], figure.unit === "%" ? " points" : figure.unit);
     if (change) {

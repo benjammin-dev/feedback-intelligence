@@ -52,6 +52,8 @@ There are no other reviewers on this project, so every pull request gets a delib
 ## Code standards
 
 - Code must pass `dotnet format --verify-no-changes` and build without warnings.
+- Dashboard code must pass `npm run format:check` (Prettier) in `dashboard/`; run `npm run format` to fix it.
+- Never commit secrets. CI scans every pull request with detect-secrets and fails if it finds one; test values that look like secrets are built at run time instead of written out.
 - Public types, and any member whose purpose isn't obvious from its name, have an XML doc comment explaining **what it does and why**.
 - External services stay behind interfaces in `FeedbackIntel.Core` ([design](docs/design.md#3-components)).
 - Never log issue text: run logs of a public repository are public. Log counts, IDs, and step names only.
