@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.7 |
-| **Date** | 2026-11-01 |
+| **Version** | 1.8 |
+| **Date** | 2026-11-05 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Project plan](project-plan.md), [Requirements](requirements.md), [Data dictionary](data-dictionary.md), [Decision records](adr/README.md) |
 
@@ -49,12 +49,14 @@ The **data contract** lists every field allowed in published and history files; 
 
 ## 3. Components
 
-![Component structure](diagrams/components.svg)
+![Component structure](diagrams/components.png)
+
+*Source: [`diagrams/components.mmd`](diagrams/components.mmd) (Mermaid).*
 
 | Project | Responsibility |
 |---|---|
-| `FeedbackIntel.Core` | Data models, interfaces, pipeline steps, and pure logic (batching, validation, hashing, data contract). No external dependencies, so it is fully unit-testable with fakes. |
-| `FeedbackIntel.Infrastructure` | Adapters that implement Core's interfaces using real services: Octokit, Presidio over HTTP, the OpenAI SDK for GitHub Models, SqlClient with Dapper and DbUp, and Parquet.Net. |
+| `FeedbackIntel.Core` | Data models, interfaces, pipeline steps, and pure logic (validation, hashing, retries, the PII test set; AI batching from M4). No external dependencies, so it is fully unit-testable with fakes. |
+| `FeedbackIntel.Infrastructure` | Adapters that implement Core's interfaces using real services: Octokit, Presidio over HTTP, SqlClient with Dapper and DbUp, Parquet.Net, and GitHub Actions step outputs; the OpenAI SDK for GitHub Models arrives in M4. |
 | `FeedbackIntel.Pipeline` | Console entry point. Loads configuration, registers adapters through dependency injection, and starts the orchestrator. |
 | `FeedbackIntel.Core.Tests` | Fast unit tests using fakes. |
 | `FeedbackIntel.Integration.Tests` | Tests against real SQL Server and Presidio containers via Testcontainers. |
@@ -193,7 +195,7 @@ A static site of plain HTML and JavaScript, with charts drawn by Chart.js and qu
 | **Issue text printed in public run logs** | Logs record counts, IDs, and step names only, never issue text. Run logs of a public repository are visible to anyone. |
 | **Malicious HTML or script in issue titles or AI output** (cross-site scripting) | The dashboard inserts all data as plain text, never as HTML, and the site sets a Content Security Policy that blocks inline scripts. |
 | Prompt injection through issue text | Issue text is clearly marked as data in prompts; AI output is parsed as JSON and validated against configured values; the AI has no ability to act (NFR-SEC-03, risk R4) |
-| Leaked credentials | Only the built-in, short-lived `GITHUB_TOKEN` is used; secret scanning in CI (NFR-SEC-01) |
+| Leaked credentials | Only the built-in, short-lived `GITHUB_TOKEN` is used; GitHub secret scanning and push protection are on for the repository, so a pushed secret is blocked or reported (NFR-SEC-01) |
 | Over-privileged workflow | Each job declares minimum permissions; only the alert step can write issues, and only the deploy step can write Pages (NFR-SEC-02) |
 | Compromised dependency or third-party action | Dependency vulnerability scanning in CI; third-party GitHub Actions pinned to exact commit versions (NFR-SEC-04) |
 | Incorrect or harmful data published | Quality checks gate publishing; the contract validator blocks unexpected fields; failures publish nothing |
@@ -235,9 +237,9 @@ The `data` branch holds only history files and is written only by the pipeline w
 
 | Item | When | Status |
 |---|---|---|
-| Whether daily commits to the `data` branch keep scheduled workflows active (ADR 0005, risk R6) | M3 | Moved from M2, because the `data` branch arrives with history in M3 |
+| Whether daily commits to the `data` branch keep scheduled workflows active (ADR 0005, risk R6) | M3 | Watching: the `data` branch has been committed to daily since 2026-11-01. GitHub's 60-day inactivity limit can't be tested sooner, so it's rechecked in M7 |
 | SQL Server container startup time on GitHub runners (assumption A4) | M2 | Done: the container starts during the build step and is ready before the pipeline needs it (migration 0.7 s; whole run 49 s) |
-| Presidio accuracy on real issues, including custom recognizers (assumption A5) | M3 | Open |
+| Presidio accuracy on real issues, including custom recognizers (assumption A5) | M3 | Done for titles: no leaks found; 3 of 216 titles had a four-part version number such as 7.6.8.0 redacted as an IP address. Accepted, because over-redaction is the safe failure. Bodies are checked again in M4, when they reach the AI |
 | Dashboard load time with DuckDB-WASM (NFR-PERF-02) | M3 | Done: the Overview meets the 3-second target (0.3 s at 10 Mbps); the engine loads in the background for the other pages (see *Measured* in section 6). Whether GitHub Pages compresses the engine is checked on the live site. |
 | Model choice and prompt accuracy against the evaluation set (assumption A6) | M4 | Open |
 
@@ -247,6 +249,7 @@ The `data` branch holds only history files and is written only by the pipeline w
 
 | Version | Date | Change |
 |---|---|---|
+| 1.8 | 2026-11-05 | End of M3: redrew both diagrams to match what was built (Mermaid sources for each), corrected the components and the secret-scanning description, and recorded the A5 and R6 results. |
 | 1.7 | 2026-11-01 | Dashboard built: recorded how libraries are pinned and self-hosted, how queries are parameterized, and the measured load and query times; closed the load-time open item. |
 | 1.6 | 2026-11-01 | Added the privacy check before redaction, and described the end-to-end PII test. |
 | 1.5 | 2026-11-01 | Added *Backfills*. Config validation in CI now reads the real file with the pipeline's own settings classes and rejects unknown settings, instead of a separate JSON schema that could drift from the code. |

@@ -1,0 +1,51 @@
+---
+config:
+  flowchart:
+    curve: basis
+    nodeSpacing: 22
+    rankSpacing: 50
+---
+flowchart TB
+    subgraph PIPE["FeedbackIntel.Pipeline: starts and wires everything"]
+        direction LR
+        PROG["Program<br/><i>reads config, runs once, exits 0 or 1</i>"]
+        SVC["PipelineServices<br/><i>maps each interface to an adapter;<br/>lists the steps in order</i>"]
+        LOG["LoggingStep<br/><i>wraps every step</i>"]
+        PROG --> SVC --> LOG
+    end
+
+    subgraph CORE["FeedbackIntel.Core: what happens. Depends on nothing"]
+        direction LR
+        ORCH["PipelineOrchestrator<br/><i>runs steps in order, stops on failure,<br/>saves the run record</i>"]
+        STEPS["Steps<br/><i>Migrate · Restore · Freshness · Ingest · Privacy check<br/>Redact · Rebuild reporting · Quality checks<br/>Publish · Advance watermarks · Save history</i>"]
+        RULES["Rules and models<br/><i>RawIssueValidator · ContentHasher · RetryPolicy<br/>PiiTestSet · PipelineSettings · RunRecord</i>"]
+        IFACES["Interfaces<br/><i>IIssueSource · IPiiRedactor · IIssueStore<br/>ICleanedIssueStore · IWatermarkStore · IRunStore<br/>IReportingBuilder · IQualityChecker · IPublisher<br/>IHistoryStore · IDatabaseMigrator<br/>IStaleDataReporter · IClock</i>"]
+        ORCH --> STEPS
+        STEPS --> RULES
+        STEPS --> IFACES
+    end
+
+    subgraph INFRA["FeedbackIntel.Infrastructure: how it happens, one adapter per outside service"]
+        direction LR
+        GH["OctokitIssueSource<br/>+ GitHubRetry<br/><i>→ GitHub REST API</i>"]
+        PR["PresidioRedactor<br/><i>→ Presidio containers</i>"]
+        SQL["SQL adapters<br/><i>SqlIssueStore · SqlCleanedIssueStore<br/>SqlWatermarkStore · SqlRunStore<br/>SqlReportingBuilder · SqlQualityChecker<br/>SqlDatabaseMigrator · SqlErrorDescriber<br/>→ SQL Server</i>"]
+        FILES["File adapters<br/><i>SitePublisher · ParquetHistoryStore<br/>→ out/site, out/history</i>"]
+        ACT["GitHubActionsOutput<br/><i>→ outputs for the alert job</i>"]
+    end
+
+    LOG --> ORCH
+    SVC -. registers the adapters .-> INFRA
+    IFACES -. implemented by .-> INFRA
+
+    classDef pipe fill:#f3f4f6,stroke:#6b7280,color:#111827
+    classDef core fill:#eaf1fd,stroke:#2f6fdb,color:#12233f
+    classDef infra fill:#fff7e6,stroke:#b7791f,color:#3d2a07
+    classDef ext fill:#eaf7ef,stroke:#2f855a,color:#123d24
+    class PROG,SVC,LOG pipe
+    class ORCH,STEPS,RULES,IFACES core
+    class GH,PR,SQL,FILES,ACT infra
+    style PIPE fill:#fafbfc,stroke:#6b7280
+    style CORE fill:#f7faff,stroke:#2f6fdb
+    style INFRA fill:#fffcf5,stroke:#b7791f
+

@@ -7,7 +7,7 @@ A system that reads public GitHub issues for popular open-source products every 
 
 **Live dashboard:** [benjammin-dev.github.io/feedback-intelligence](https://benjammin-dev.github.io/feedback-intelligence/), updated daily.
 
-> **Status:** in development. Milestone M2 (walking skeleton) is complete: the pipeline runs every day and publishes the weekly count of new winget-cli issues. Redaction, AI enrichment, and the full dashboard arrive in M3–M5.
+> **Status:** in development. Milestone M3 is complete: every day the pipeline fetches new and changed winget-cli issues, removes personal information, checks the data, and publishes a dashboard with an overview, weekly trends, and a searchable issue list. AI classification and summaries arrive in M4, and emerging topics and a weekly digest in M5.
 
 ## What it does
 
@@ -43,6 +43,7 @@ A scheduled GitHub Actions workflow runs a C# pipeline. Each run starts temporar
 | Requirements | [requirements.md](docs/requirements.md) | [requirements.pdf](docs/requirements.pdf) |
 | Design | [design.md](docs/design.md) | [design.pdf](docs/design.pdf) |
 | Data dictionary | [data-dictionary.md](docs/data-dictionary.md) | [data-dictionary.pdf](docs/data-dictionary.pdf) |
+| Test strategy | [test-strategy.md](docs/test-strategy.md) | [test-strategy.pdf](docs/test-strategy.pdf) |
 | Architecture decisions | [docs/adr](docs/adr/README.md) | |
 
 The Markdown files are the official versions; the PDFs are readable copies.
