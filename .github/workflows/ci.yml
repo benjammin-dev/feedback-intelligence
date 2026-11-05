@@ -1,4 +1,5 @@
-# Continuous integration: build, format check, tests, and coverage on every change (FR-DEV-01, FR-DEV-03).
+# Continuous integration: secret scan, build, format checks, tests, dependency audits, and coverage
+# on every change (FR-DEV-01, FR-DEV-03, NFR-SEC-04, NFR-MNT-04).
 name: CI
 
 on:
@@ -26,6 +27,22 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Fails if any tracked file looks like it contains a secret (FR-DEV-01, NFR-SEC-01). Only file
+      # names, line numbers, and the kind of secret are printed, never the value.
+      # package-lock.json is skipped: its integrity hashes look like secrets but are public checksums.
+      - name: Scan for secrets
+        run: |
+          python3 -m venv "$RUNNER_TEMP/secret-scan"
+          "$RUNNER_TEMP/secret-scan/bin/pip" install --quiet --disable-pip-version-check detect-secrets==1.5.0
+          "$RUNNER_TEMP/secret-scan/bin/detect-secrets" scan \
+            --exclude-files '(^|/)package-lock\.json$|\.(pdf|png|jpg|svg)$' > "$RUNNER_TEMP/secrets.json"
+          if jq -e '.results == {}' "$RUNNER_TEMP/secrets.json" > /dev/null; then
+            echo "No secrets found."
+          else
+            jq -r '.results | to_entries[] | .key as $file | .value[] | "::error file=\($file),line=\(.line_number)::Possible secret: \(.type)"' "$RUNNER_TEMP/secrets.json"
+            exit 1
+          fi
 
       - name: Set up .NET (pinned; see global.json)
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -98,6 +115,13 @@ jobs:
 
       - name: Install pinned libraries
         run: npm ci
+
+      # Fails on any known high or critical vulnerability in the dashboard's packages (NFR-SEC-04).
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Check formatting (NFR-MNT-04)
+        run: npm run format:check
 
       - name: Test
         run: npm test

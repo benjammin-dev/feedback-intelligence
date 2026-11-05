@@ -10,7 +10,14 @@ import { fileURLToPath } from "node:url";
 import { buildChoicesQuery, buildIssueQueries, buildWeeklyQuery } from "../js/logic.js";
 
 const require = createRequire(import.meta.url);
-const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "node_modules", "@duckdb", "duckdb-wasm", "dist");
+const dist = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "node_modules",
+  "@duckdb",
+  "duckdb-wasm",
+  "dist",
+);
 const duckdb = require(path.join(dist, "duckdb-node-blocking.cjs"));
 
 let db;
@@ -56,7 +63,10 @@ after(() => {
 function run({ sql, params }) {
   const statement = conn.prepare(sql);
   try {
-    return statement.query(...params).toArray().map((row) => row.toJSON());
+    return statement
+      .query(...params)
+      .toArray()
+      .map((row) => row.toJSON());
   } finally {
     statement.close();
   }
@@ -108,14 +118,26 @@ test("rows come back as plain numbers and strings the page can show", () => {
 });
 
 test("filter choices list each value once", () => {
-  assert.deepEqual(run(buildChoicesQuery("category")).map((row) => row.value), ["bug", "feature_request"]);
-  assert.deepEqual(run(buildChoicesQuery("severity")).map((row) => row.value), ["high"]);
+  assert.deepEqual(
+    run(buildChoicesQuery("category")).map((row) => row.value),
+    ["bug", "feature_request"],
+  );
+  assert.deepEqual(
+    run(buildChoicesQuery("severity")).map((row) => row.value),
+    ["high"],
+  );
 });
 
 test("weekly rows for one repository, oldest first, inside the range", () => {
   const all = run(buildWeeklyQuery("all", "", ""));
-  assert.deepEqual(all.map((row) => row.week_ms), [Date.UTC(2026, 8, 28), Date.UTC(2026, 9, 5)]);
-  assert.deepEqual(all.map((row) => row.median_days_to_close), [3, null]);
+  assert.deepEqual(
+    all.map((row) => row.week_ms),
+    [Date.UTC(2026, 8, 28), Date.UTC(2026, 9, 5)],
+  );
+  assert.deepEqual(
+    all.map((row) => row.median_days_to_close),
+    [3, null],
+  );
   assert.equal(run(buildWeeklyQuery("all", "2026-10-01", "")).length, 1);
   assert.equal(run(buildWeeklyQuery("microsoft/winget-cli", "", ""))[0].new_issues, 6);
 });
