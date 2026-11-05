@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.0 |
-| **Date** | 2026-10-14 |
+| **Version** | 1.1 |
+| **Date** | 2026-11-05 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Project plan](project-plan.md) |
 
@@ -269,7 +269,7 @@ Criteria use short checklists. Scenarios where the starting situation matters us
 
 | ID | Requirement | Traces to | Priority | Milestone |
 |---|---|---|---|---|
-| FR-INS-01 | The system shall compute weekly metrics per repository: issue volume, category mix, critical count, and median time to close. | US-01, US-02 | Must | M3 |
+| FR-INS-01 | The system shall compute weekly metrics per repository: issue volume, category mix, critical count, and median time to close. | US-01, US-02 | Must | M3: volume and median time to close; M4: category mix and critical count |
 | FR-INS-02 | The system shall group similar issues into topics and rank them by growth over the past 7 days versus the prior 7 days. | US-03 | Should | M5 |
 | FR-INS-03 | The system shall show a topic only if it contains at least 3 issues. | US-03 | Should | M5 |
 | FR-INS-04 | The system shall generate a short name and summary for each emerging topic. | US-03 | Should | M5 |
@@ -281,7 +281,7 @@ Criteria use short checklists. Scenarios where the starting situation matters us
 |---|---|---|---|---|
 | FR-DSH-01 | The system shall publish a static dashboard to GitHub Pages after each successful run. | US-01, US-09 | Must | M2 |
 | FR-DSH-02 | The dashboard shall have Overview, Trends, and Issue explorer pages. | US-01, US-02, US-06 | Must | M3 |
-| FR-DSH-03 | The dashboard shall let users filter by repository, category, severity, and date range, and search by text, entirely in the browser. | US-01, US-02, US-06 | Must | M3 |
+| FR-DSH-03 | The dashboard shall let users filter by repository, category, severity, and date range, and search by text, entirely in the browser. | US-01, US-02, US-06 | Must | M3: repository, date range, and text; M4: category and severity |
 | FR-DSH-04 | The dashboard shall link every issue to its original GitHub URL, opening in a new tab. | US-03, US-08 | Must | M3 |
 | FR-DSH-05 | The dashboard shall show when the data was last updated. | US-01, US-11 | Must | M3 |
 | FR-DSH-06 | The dashboard shall label AI-generated categories, severities, and summaries as AI-generated. | US-05 | Must | M4 |
@@ -302,7 +302,7 @@ Criteria use short checklists. Scenarios where the starting situation matters us
 
 | ID | Requirement | Traces to | Priority | Milestone |
 |---|---|---|---|---|
-| FR-CFG-01 | The system shall read tracked repositories, categories, severity levels, history window, and thresholds from a single config file. | US-12 | Must | M3 |
+| FR-CFG-01 | The system shall read tracked repositories, categories, severity levels, history window, and thresholds from a single config file. | US-12 | Must | M3: repositories, history window, and thresholds; M4: categories and severity levels |
 | FR-CFG-02 | The system shall validate the config file in CI and fail the check if it's invalid. | US-12 | Must | M3 |
 
 ### Development and delivery (DEV)
@@ -477,4 +477,5 @@ Every user story and the functional requirements that implement it.
 
 | Version | Date | Change |
 |---|---|---|
+| 1.1 | 2026-11-05 | M3 review: split the milestones of FR-INS-01, FR-DSH-03, and FR-CFG-01, whose category and severity parts depend on AI classification in M4. No requirement text changed. |
 | 1.0 | 2026-10-14 | Initial requirements approved |

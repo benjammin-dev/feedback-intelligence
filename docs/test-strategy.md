@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Date** | 2026-11-05 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Requirements](requirements.md), [Design](design.md), [Data dictionary](data-dictionary.md) |
@@ -31,7 +31,7 @@ This document explains how the platform is tested: what each kind of test proves
 | **End-to-end privacy** | `Integration.Tests/Privacy/EndToEndPiiTests.cs` | Issues built from the PII test set go through redaction, the cleaned layer, reporting, publishing, and history, and no known value appears in any output file (FR-PRV-04, NFR-PRIV-01) | About a minute | CI |
 | **Config** | `Core.Tests/Configuration/ConfigFileTests.cs` | The real `config/pipeline.json` loads with the pipeline's own settings classes, has no unknown or misspelled settings, and passes every range check (FR-CFG-02). Runs first as its own CI step | Seconds | CI |
 | **Dashboard** | `dashboard/tests` | The dashboard's SQL runs in the Node build of the same DuckDB package the browser uses: filters combine correctly, date ranges include both days, search treats input as text, never SQL; plus the wording and formatting helpers | Seconds | CI, "Dashboard tests" job |
-| **Build checks** | CI workflow | The solution builds with warnings as errors, formatting matches `.editorconfig` (NFR-MNT-04), and the dashboard build can still download and assemble every pinned library | Seconds | CI |
+| **Build checks** | CI workflow | No tracked file contains a secret (detect-secrets, FR-DEV-01); the solution builds with warnings as errors; C# formatting matches `.editorconfig` and dashboard code passes Prettier (NFR-MNT-04); NuGet and npm packages have no known high-severity vulnerabilities (NFR-SEC-04); and the dashboard build can still download and assemble every pinned library | Seconds | CI |
 
 ### Coverage
 
@@ -126,7 +126,9 @@ Merges to `main` go through pull requests only, and a pull request can't merge u
 | FR-CFG-02 | `ConfigFileTests`, `PipelineSettingsTests`, `BackfillOptionsTests` |
 | FR-DSH-03, NFR-PERF-01 | `dashboard/tests/queries.test.mjs` |
 | NFR-PRIV-02 | `DataContractTests` |
-| NFR-MNT-01, NFR-MNT-04 | CI coverage gate and format check |
+| NFR-MNT-01, NFR-MNT-04 | CI coverage gate, `dotnet format`, and Prettier checks |
+| FR-DEV-01, NFR-SEC-01 | CI secret scan |
+| NFR-SEC-04 | NuGet audit during the build, and `npm audit` |
 
 ---
 
@@ -134,4 +136,5 @@ Merges to `main` go through pull requests only, and a pull request can't merge u
 
 | Version | Date | Change |
 |---|---|---|
+| 1.1 | 2026-11-05 | Added the secret scan, npm audit, and Prettier checks from the M3 review. |
 | 1.0 | 2026-11-05 | First version, written at the end of M3. |

@@ -1,6 +1,6 @@
 # 0011: Use GitHub Issues for alerting
 
-**Status:** Accepted
+**Status:** Superseded by [0015](0015-alerts-from-workflow-job.md)
 **Date:** 2026-10-14
 
 ## Context

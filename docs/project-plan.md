@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.7 |
+| **Version** | 1.8 |
 | **Date** | 2026-11-05 |
 | **Owner** | Benjamin Rose |
 
@@ -133,7 +133,7 @@ Likelihood and impact are rated Low, Medium, or High.
 | R8 | SQL Server container is slow or fails on GitHub runners | Low | Medium | Validate early in the walking skeleton (A4) | Retry step; health-check wait before queries |
 | R9 | Repository grows too large from committing data history daily | Medium | Medium | Store compact Parquet; keep a limited history window; monitor repository size | Move history to GitHub Releases assets or prune old snapshots |
 | R10 | Accidental charges | Low | Medium | No payment method on GitHub; paid usage left off | Check billing settings monthly |
-| R11 | Secrets leaked in code or logs | Low | High | Use only the built-in `GITHUB_TOKEN`; GitHub secret scanning and push protection on the repository | Revoke and rotate immediately; audit history |
+| R11 | Secrets leaked in code or logs | Low | High | Use only the built-in `GITHUB_TOKEN`; secret scan in CI on every pull request; GitHub push protection | Revoke and rotate immediately; audit history |
 | R12 | Scope creep or lost momentum at 5 hours a week | Medium | High | Fixed scope; small steps; project presentable at every milestone | Ship the current milestone and pause new features |
 
 **Review at the end of M3 (2026-11-05):**
@@ -204,6 +204,7 @@ Personal information is redacted from M3 onward, before any issue text is publis
 
 | Version | Date | Change |
 |---|---|---|
+| 1.8 | 2026-11-05 | Updated the R11 mitigation after adding a secret scan to CI. |
 | 1.7 | 2026-11-05 | Completed M3: recorded its actual time, the result of assumption A5, and a review of risks R5, R6, and R9; linked the new test strategy; corrected the secret-scanning description. |
 | 1.6 | 2026-11-01 | Recorded the review of assumption A8 before issue titles are published. |
 | 1.5 | 2026-11-01 | Recorded that M2's daily schedule was confirmed by scheduled runs from 2026-10-26. |
