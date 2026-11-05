@@ -3,24 +3,123 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Only files from this site may load or run (threat model: XSS). -->
+  <!-- Only files from this site may load or run (threat model: XSS). 'wasm-unsafe-eval' lets the
+       query engine compile its WebAssembly; it doesn't allow JavaScript eval. -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+        content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="description" content="Trends in public GitHub issues, updated daily.">
   <title>Feedback Intelligence</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="app.js" defer></script>
+  <script src="js/app.js" type="module"></script>
 </head>
 <body>
-  <main>
-    <h1>Feedback Intelligence</h1>
-    <p class="label">New GitHub issues in the last 7 days</p>
-    <p id="new-issues" class="number">…</p>
-    <p id="change" class="change"></p>
-    <p id="updated" class="muted"></p>
-    <p id="error" class="error" hidden></p>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <p class="brand">Feedback Intelligence</p>
+      <nav aria-label="Pages">
+        <a href="#overview" data-page-link="overview">Overview</a>
+        <a href="#trends" data-page-link="trends">Trends</a>
+        <a href="#issues" data-page-link="issues">Issues</a>
+      </nav>
+      <label class="repository-picker">
+        <span>Repository</span>
+        <select id="repository">
+          <option value="all">All repositories</option>
+        </select>
+      </label>
+    </div>
+    <p id="updated" class="header-inner updated"></p>
+  </header>
+
+  <main id="main">
+    <p id="stale" class="notice" role="status" hidden></p>
+    <p id="error" class="notice error" role="alert" hidden></p>
+
+    <!-- Overview: last 7 days against the 7 before (US-01). Loads from two small JSON files. -->
+    <section id="page-overview" data-page="overview" aria-labelledby="overview-title">
+      <h1 id="overview-title" tabindex="-1">Overview</h1>
+      <p id="overview-period" class="muted"></p>
+      <div id="overview-cards" class="cards"></div>
+    </section>
+
+    <!-- Trends: complete weeks over the history window (US-02). -->
+    <section id="page-trends" data-page="trends" aria-labelledby="trends-title" hidden>
+      <h1 id="trends-title" tabindex="-1">Trends</h1>
+      <form id="trend-filters" class="filters">
+        <label>From <input type="date" name="from"></label>
+        <label>To <input type="date" name="to"></label>
+        <button type="reset">Show all weeks</button>
+      </form>
+      <p id="trends-status" class="muted" role="status"></p>
+      <div class="chart-grid">
+        <figure class="panel">
+          <figcaption>New and closed issues per week</figcaption>
+          <div class="chart"><canvas id="chart-volume" role="img"></canvas></div>
+        </figure>
+        <figure class="panel">
+          <figcaption>Median days to close, for issues closed that week</figcaption>
+          <div class="chart"><canvas id="chart-median" role="img"></canvas></div>
+        </figure>
+      </div>
+      <details class="panel">
+        <summary>Show the numbers as a table</summary>
+        <div class="table-scroll">
+          <table id="trends-table">
+            <caption class="visually-hidden">Weekly issue counts</caption>
+            <thead><tr><th scope="col">Week starting</th><th scope="col">New</th><th scope="col">Closed</th><th scope="col">Median days to close</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </details>
+      <div class="panel muted">
+        <h2>Category mix</h2>
+        <p>Weekly counts by category (bug, feature request, question, and so on) appear here once AI classification is added.</p>
+      </div>
+    </section>
+
+    <!-- Issue explorer: search and filter every issue (US-06), each linking to GitHub (US-08). -->
+    <section id="page-issues" data-page="issues" aria-labelledby="issues-title" hidden>
+      <h1 id="issues-title" tabindex="-1">Issues</h1>
+      <form id="issue-filters" class="filters" role="search">
+        <label class="wide">Search titles and summaries <input type="search" name="search" autocomplete="off"></label>
+        <label>State
+          <select name="state"><option value="">Any</option><option value="open">Open</option><option value="closed">Closed</option></select>
+        </label>
+        <label>Category <select name="category"><option value="">Any</option></select></label>
+        <label>Severity <select name="severity"><option value="">Any</option></select></label>
+        <label>Created from <input type="date" name="from"></label>
+        <label>Created to <input type="date" name="to"></label>
+        <label>Sort <select name="sort"></select></label>
+        <button type="reset">Clear filters</button>
+      </form>
+      <p id="issue-count" class="muted" role="status" aria-live="polite"></p>
+      <div class="table-scroll">
+        <table id="issue-table" class="issue-table">
+          <caption class="visually-hidden">Issues matching the filters</caption>
+          <thead>
+            <tr>
+              <th scope="col">Issue</th>
+              <th scope="col">Title</th>
+              <th scope="col">Repository</th>
+              <th scope="col">State</th>
+              <th scope="col">Created</th>
+              <th scope="col">Days to close</th>
+              <th scope="col">Category</th>
+              <th scope="col">Severity</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button id="more" type="button" hidden>Show more</button>
+    </section>
   </main>
-  <footer class="muted">
-    <a href="https://github.com/benjammin-dev/feedback-intelligence">Source on GitHub</a>
+
+  <footer class="site-footer muted">
+    <p>Built from public GitHub issues. Personal information is removed before anything is stored or published.
+      <a href="https://github.com/benjammin-dev/feedback-intelligence">Source on GitHub</a></p>
   </footer>
 </body>
 </html>

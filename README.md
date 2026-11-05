@@ -49,7 +49,7 @@ The Markdown files are the official versions; the PDFs are readable copies.
 
 ## Running locally
 
-Development uses Windows with WSL 2, Docker Desktop, the .NET 10 SDK, and VS Code ([ADR 0012](docs/adr/0012-wsl2-docker-development.md)). Commands run in the WSL terminal from the repository root.
+Development uses Windows with WSL 2, Docker Desktop, the .NET 10 SDK, Node.js 22 or later (for the dashboard), and VS Code ([ADR 0012](docs/adr/0012-wsl2-docker-development.md)). Commands run in the WSL terminal from the repository root.
 
 **1. Start the local services** (SQL Server and Presidio):
 
@@ -83,7 +83,7 @@ Settings live in [`config/pipeline.json`](config/pipeline.json). Any value can b
 **4. View the dashboard:**
 
 ```bash
-cp dashboard/* out/site/
+(cd dashboard && npm ci && npm run build)   # adds the pages and pinned libraries to out/site
 python3 -m http.server 8080 --directory out/site
 ```
 
