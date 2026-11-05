@@ -74,3 +74,33 @@ jobs:
             echo "::error::Line coverage ${coverage}% is below the 80% minimum (NFR-MNT-01)."
             exit 1
           }
+
+  # The dashboard's tests run its real queries in DuckDB, and the build proves every pinned
+  # library, including DuckDB's Parquet extension, can still be downloaded and assembled.
+  dashboard:
+    name: Dashboard tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: dashboard
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install pinned libraries
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build the site
+        run: npm run build -- "$RUNNER_TEMP/site"

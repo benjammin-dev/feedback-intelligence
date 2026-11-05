@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "description": "The dashboard: static files plus the browser libraries it needs. npm installs the pinned libraries, and build.mjs copies everything into the site folder.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "1.32.0",
+    "chart.js": "4.5.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10"
+  }
+}

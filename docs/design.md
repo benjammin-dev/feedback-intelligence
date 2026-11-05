@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.6 |
+| **Version** | 1.7 |
 | **Date** | 2026-11-01 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Project plan](project-plan.md), [Requirements](requirements.md), [Data dictionary](data-dictionary.md), [Decision records](adr/README.md) |
@@ -25,7 +25,7 @@ A scheduled GitHub Actions workflow runs a C# pipeline once a day. Each run star
 | GitHub Actions runner (temporary) | The C# pipeline, SQL Server Express, and Presidio containers |
 | GitHub repository | Code, config, prompts, migrations, docs; history on the `data` branch |
 | GitHub Pages | The static dashboard and its published data files |
-| Viewer's browser | Dashboard code and DuckDB-WASM |
+| Viewer's browser | Dashboard code, DuckDB-WASM, and Chart.js, all served by GitHub Pages |
 | External services | GitHub REST API (issues) and GitHub Models (AI) |
 
 **Key decisions:** [ADR 0002](adr/0002-run-on-github.md) (GitHub as platform), [0004](adr/0004-sql-server-express-container.md) (temporary SQL Server), [0005](adr/0005-history-parquet-data-branch.md) and [0013](adr/0013-exclude-bodies-from-history.md) (history), [0009](adr/0009-raw-cleaned-reporting-layers.md) (data layers).
@@ -171,7 +171,13 @@ A static site of plain HTML and JavaScript, with charts drawn by Chart.js and qu
 | Weekly digest | Latest digest and archive | `digests.parquet` | M5 |
 | Pipeline health | Last 30 runs, data freshness, AI usage vs. limit | `run_health.parquet`, `site_info.json` | M5 |
 
-**Loading:** the Overview page renders immediately from two small JSON files; DuckDB-WASM loads in the background and is needed only for the other pages. This addresses the 3-second load target (NFR-PERF-02).
+**Loading:** the Overview page renders immediately from two small JSON files; DuckDB-WASM loads in the background and is needed only for the other pages. This addresses the 3-second load target (NFR-PERF-02). The Trends page shows weekly volume and closures, with the category mix shown as coming soon until `weekly_category.parquet` exists (M4).
+
+**Libraries:** DuckDB-WASM and Chart.js are pinned in `dashboard/package-lock.json` (updated by Dependabot) and assembled into the site by `dashboard/build.mjs`, so the page loads nothing from other sites and its Content Security Policy stays `'self'`. That includes DuckDB's Parquet extension, which DuckDB-WASM would otherwise fetch from extensions.duckdb.org; DuckDB checks its signature when loading it.
+
+**Queries:** each page's SQL is built in `dashboard/js/logic.js`, with every visitor-entered value passed as a parameter, never as SQL text. Node tests run those queries in the same DuckDB build the browser uses.
+
+**Measured (2026-11-01, Chromium, 10 Mbps):** Overview ready in 0.3 seconds. The engine is a 34 MB download (7.7 MB if compressed in transit), so Trends and Issues are ready about 29 seconds after a first visit uncompressed, or about 7 seconds compressed; later visits use the browser cache. Searches over 100,000 issues return in about 0.1 seconds (NFR-PERF-01).
 
 **Every page shows:** a repository selector, the time the data was last updated (FR-DSH-05), and an "AI-generated" marker next to AI categories, severities, summaries, topics, and digests (FR-DSH-06).
 
@@ -232,7 +238,7 @@ The `data` branch holds only history files and is written only by the pipeline w
 | Whether daily commits to the `data` branch keep scheduled workflows active (ADR 0005, risk R6) | M3 | Moved from M2, because the `data` branch arrives with history in M3 |
 | SQL Server container startup time on GitHub runners (assumption A4) | M2 | Done: the container starts during the build step and is ready before the pipeline needs it (migration 0.7 s; whole run 49 s) |
 | Presidio accuracy on real issues, including custom recognizers (assumption A5) | M3 | Open |
-| Dashboard load time with DuckDB-WASM (NFR-PERF-02) | M3 | Open |
+| Dashboard load time with DuckDB-WASM (NFR-PERF-02) | M3 | Done: the Overview meets the 3-second target (0.3 s at 10 Mbps); the engine loads in the background for the other pages (see *Measured* in section 6). Whether GitHub Pages compresses the engine is checked on the live site. |
 | Model choice and prompt accuracy against the evaluation set (assumption A6) | M4 | Open |
 
 ---
@@ -241,6 +247,7 @@ The `data` branch holds only history files and is written only by the pipeline w
 
 | Version | Date | Change |
 |---|---|---|
+| 1.7 | 2026-11-01 | Dashboard built: recorded how libraries are pinned and self-hosted, how queries are parameterized, and the measured load and query times; closed the load-time open item. |
 | 1.6 | 2026-11-01 | Added the privacy check before redaction, and described the end-to-end PII test. |
 | 1.5 | 2026-11-01 | Added *Backfills*. Config validation in CI now reads the real file with the pipeline's own settings classes and rejects unknown settings, instead of a separate JSON schema that could drift from the code. |
 | 1.4 | 2026-11-01 | Added the *Alerts* section: alerts are raised by a separate workflow job from the pipeline's step outputs. Listed the quality checks; replaced `IAlerter` with `IStaleDataReporter`, and added `ICleanedIssueStore` and `IWatermarkStore` to the interface list. |

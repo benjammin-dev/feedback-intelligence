@@ -115,8 +115,20 @@ jobs:
           Backfill__To: ${{ inputs.backfill_to }}
         run: dotnet run --project src/FeedbackIntel.Pipeline --configuration Release --no-build
 
+      # Builds the dashboard with the pinned libraries in dashboard/package-lock.json.
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      # Adds the dashboard's pages and libraries next to the data files the pipeline wrote.
       - name: Assemble site
-        run: cp dashboard/* out/site/
+        working-directory: dashboard
+        run: |
+          npm ci
+          npm run build -- ../out/site
 
       # Handed to the save-history job, the only one allowed to write to the repository.
       - name: Upload history
