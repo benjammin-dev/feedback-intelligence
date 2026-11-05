@@ -16,10 +16,13 @@ Accepted records are not edited. If a decision changes, a new record supersedes 
 | [0008](0008-static-dashboard-duckdb-wasm.md) | Serve a static dashboard queried in the browser with DuckDB-WASM | Accepted | 2026-10-14 |
 | [0009](0009-raw-cleaned-reporting-layers.md) | Organize data in raw, cleaned, and reporting layers | Accepted | 2026-10-14 |
 | [0010](0010-daily-batch-processing.md) | Process data in a daily batch rather than streaming | Accepted | 2026-10-14 |
-| [0011](0011-github-issues-alerting.md) | Use GitHub Issues for alerting | Accepted | 2026-10-14 |
+| [0011](0011-github-issues-alerting.md) | Use GitHub Issues for alerting | Superseded by [0015](0015-alerts-from-workflow-job.md) | 2026-10-14 |
 | [0012](0012-wsl2-docker-development.md) | Develop on Windows using WSL 2 and Docker Desktop | Accepted | 2026-10-14 |
 | [0013](0013-exclude-bodies-from-history.md) | Exclude issue bodies from stored history | Accepted | 2026-10-14 |
 | [0014](0014-target-dotnet-10.md) | Target .NET 10 instead of .NET 8 | Accepted | 2026-10-19 |
+| [0015](0015-alerts-from-workflow-job.md) | Raise and resolve alerts from a separate workflow job | Accepted | 2026-11-05 |
+| [0016](0016-config-validated-by-settings-classes.md) | Validate the config file with the pipeline's settings classes | Accepted | 2026-11-05 |
+| [0017](0017-dashboard-libraries-npm-self-hosted.md) | Pin the dashboard's libraries with npm and serve them from the site | Accepted | 2026-11-05 |
 
 ## Template
 

@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Approved |
-| **Version** | 1.8 |
+| **Version** | 1.9 |
 | **Date** | 2026-11-05 |
 | **Owner** | Benjamin Rose |
 | **Related** | [Project plan](project-plan.md), [Requirements](requirements.md), [Data dictionary](data-dictionary.md), [Decision records](adr/README.md) |
@@ -101,7 +101,7 @@ The **data contract** lists every field allowed in published and history files; 
 
 ### Alerts
 
-The pipeline doesn't write issues itself. It passes what it found to the workflow as step outputs (failed step, error, and data age when stale), and a separate **alert** job, the only part of the system allowed to write issues (NFR-SEC-02), acts on them. The alert job runs after every run, whatever happened, so a build error, timeout, or failed deploy is reported too (NFR-OBS-02).
+The pipeline doesn't write issues itself. It passes what it found to the workflow as step outputs (failed step, error, and data age when stale), and a separate **alert** job, the only part of the system allowed to write issues (NFR-SEC-02), acts on them ([ADR 0015](adr/0015-alerts-from-workflow-job.md)). The alert job runs after every run, whatever happened, so a build error, timeout, or failed deploy is reported too (NFR-OBS-02). One limit remains: if the workflow doesn't run at all, for example because GitHub has disabled the schedule (risk R6), nothing raises an alert, so NFR-REL-02 depends on the R6 review in M7. A second scheduled check wouldn't help, because GitHub disables every scheduled workflow in an inactive repository together.
 
 | Situation | What the alert job does |
 |---|---|
@@ -119,7 +119,7 @@ A manual run can take a backfill date range (FR-ING-06, US-14). Besides the norm
 
 ## 5. Configuration
 
-All tunable behavior lives in `config/pipeline.json` (FR-CFG-01). The settings classes in Core are its schema: at startup every value is checked against its allowed range, and in CI a test reads the real file with the same code, also rejecting any setting the code doesn't know, such as a misspelled name, so a bad config change fails its pull request (FR-CFG-02). Any value can be overridden by an environment variable, which is how local runs redirect output away from the live site.
+All tunable behavior lives in `config/pipeline.json` (FR-CFG-01). The settings classes in Core are its schema: at startup every value is checked against its allowed range, and in CI a test reads the real file with the same code, also rejecting any setting the code doesn't know, such as a misspelled name, so a bad config change fails its pull request (FR-CFG-02, [ADR 0016](adr/0016-config-validated-by-settings-classes.md)). Any value can be overridden by an environment variable, which is how local runs redirect output away from the live site.
 
 ```jsonc
 {
@@ -175,11 +175,11 @@ A static site of plain HTML and JavaScript, with charts drawn by Chart.js and qu
 
 **Loading:** the Overview page renders immediately from two small JSON files; DuckDB-WASM loads in the background and is needed only for the other pages. This addresses the 3-second load target (NFR-PERF-02). The Trends page shows weekly volume and closures, with the category mix shown as coming soon until `weekly_category.parquet` exists (M4).
 
-**Libraries:** DuckDB-WASM and Chart.js are pinned in `dashboard/package-lock.json` (updated by Dependabot) and assembled into the site by `dashboard/build.mjs`, so the page loads nothing from other sites and its Content Security Policy stays `'self'`. That includes DuckDB's Parquet extension, which DuckDB-WASM would otherwise fetch from extensions.duckdb.org; DuckDB checks its signature when loading it.
+**Libraries:** DuckDB-WASM and Chart.js are pinned in `dashboard/package-lock.json` (updated by Dependabot) and assembled into the site by `dashboard/build.mjs`, so the page loads nothing from other sites and its Content Security Policy stays `'self'`. That includes DuckDB's Parquet extension, which DuckDB-WASM would otherwise fetch from extensions.duckdb.org; DuckDB checks its signature when loading it ([ADR 0017](adr/0017-dashboard-libraries-npm-self-hosted.md)).
 
 **Queries:** each page's SQL is built in `dashboard/js/logic.js`, with every visitor-entered value passed as a parameter, never as SQL text. Node tests run those queries in the same DuckDB build the browser uses.
 
-**Measured (2026-11-01, Chromium, 10 Mbps):** Overview ready in 0.3 seconds. The engine is a 34 MB download (7.7 MB if compressed in transit), so Trends and Issues are ready about 29 seconds after a first visit uncompressed, or about 7 seconds compressed; later visits use the browser cache. Searches over 100,000 issues return in about 0.1 seconds (NFR-PERF-01).
+**Measured (2026-11-01, Chromium, 10 Mbps):** Overview ready in 0.3 seconds. The engine is a 34 MB download (7.7 MB if compressed in transit), so Trends and Issues are ready about 29 seconds after a first visit uncompressed, or about 7 seconds compressed; later visits use the browser cache. Searches over 100,000 issues return in about 0.1 seconds (NFR-PERF-01). A small JavaScript Parquet reader (hyparquet, about 47 KB) was considered at this point, since the data is small and it would make Trends and Issues ready almost at once. DuckDB-WASM was kept for SQL in the browser, with the engine loading in the background while the Overview is read.
 
 **Every page shows:** a repository selector, the time the data was last updated (FR-DSH-05), and an "AI-generated" marker next to AI categories, severities, summaries, topics, and digests (FR-DSH-06).
 
@@ -195,7 +195,7 @@ A static site of plain HTML and JavaScript, with charts drawn by Chart.js and qu
 | **Issue text printed in public run logs** | Logs record counts, IDs, and step names only, never issue text. Run logs of a public repository are visible to anyone. |
 | **Malicious HTML or script in issue titles or AI output** (cross-site scripting) | The dashboard inserts all data as plain text, never as HTML, and the site sets a Content Security Policy that blocks inline scripts. |
 | Prompt injection through issue text | Issue text is clearly marked as data in prompts; AI output is parsed as JSON and validated against configured values; the AI has no ability to act (NFR-SEC-03, risk R4) |
-| Leaked credentials | Only the built-in, short-lived `GITHUB_TOKEN` is used; GitHub secret scanning and push protection are on for the repository, so a pushed secret is blocked or reported (NFR-SEC-01) |
+| Leaked credentials | Only the built-in, short-lived `GITHUB_TOKEN` is used; CI scans every pull request with detect-secrets and fails if it finds one (FR-DEV-01), and GitHub's push protection blocks known secret formats on push (NFR-SEC-01) |
 | Over-privileged workflow | Each job declares minimum permissions; only the alert step can write issues, and only the deploy step can write Pages (NFR-SEC-02) |
 | Compromised dependency or third-party action | Dependency vulnerability scanning in CI; third-party GitHub Actions pinned to exact commit versions (NFR-SEC-04) |
 | Incorrect or harmful data published | Quality checks gate publishing; the contract validator blocks unexpected fields; failures publish nothing |
@@ -249,6 +249,7 @@ The `data` branch holds only history files and is written only by the pipeline w
 
 | Version | Date | Change |
 |---|---|---|
+| 1.9 | 2026-11-05 | M3 review: linked ADRs 0015 to 0017, described the secret scan in CI, recorded the NFR-REL-02 limit when the workflow doesn't run, and moved the hyparquet comparison here from ADR 0008. |
 | 1.8 | 2026-11-05 | End of M3: redrew both diagrams to match what was built (Mermaid sources for each), corrected the components and the secret-scanning description, and recorded the A5 and R6 results. |
 | 1.7 | 2026-11-01 | Dashboard built: recorded how libraries are pinned and self-hosted, how queries are parameterized, and the measured load and query times; closed the load-time open item. |
 | 1.6 | 2026-11-01 | Added the privacy check before redaction, and described the end-to-end PII test. |
